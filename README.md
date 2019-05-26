@@ -1,6 +1,6 @@
  # Deconv
 
-<<<<<<< HEAD
+
  ## Install Dependencies
 
  We recommend using pip to install the required dependencies:
@@ -32,19 +32,15 @@
 
 
  ## 1. For logistic regression (--loss L2 for L2 linear regression): 
-=======
- # 1. For logistic regression (--loss L2 for L2 linear regression): 
->>>>>>> 13473f9b141a3563a8ba2423f630a085f79b8724
+
 
 method 1: regular conv, method 2: channel-wise deconv + conv, method 3: channel and pixel deconv + conv 4: group deconv (rearrange pixels into groups then deconv) 
 
 python main.py --lr .1 --optimizer SGD --arch simple_v1 --epochs 1 --dataset cifar10  --batch-size 512 --msg True --method 1 --loss CE
  
-<<<<<<< HEAD
+
  ## 2. For a simple cnn: 
-=======
- # 2. For a 3-hidden-layer fully connected network: 
->>>>>>> 13473f9b141a3563a8ba2423f630a085f79b8724
+
 
 method 1: vanilla network + sgd, method 2: batch norm + sgd, method 3: channel deconv with 32 groups 
 
@@ -110,7 +106,7 @@ python main_imagenet.py -a resnet18d -j 32 imagenet/ILSVRC/Data/CLS-LOC --deconv
 
 3. deconv vgg11
  
-<<<<<<< HEAD
+
 python main_imagenet.py -a vgg11d -j 32 /vulcan/scratch/cxy/Data/imagenet/ILSVRC/Data/CLS-LOC --deconv True --lr 0.01 >vgg11d.imagenet.log &
 
 ###TODO:
@@ -128,9 +124,9 @@ Then on your local machine run:
 ssh [username]@openlab.umiacs.umd.edu -L 0.0.0.0:16006:vulcan[XX].umiacs.umd.edu:6006
 
 Then open: localhost:6006 on your local machine.
-=======
+
 python main_imagenet.py -a vgg11d -j 32 imagenet/ILSVRC/Data/CLS-LOC --deconv True --lr 0.01 >vgg11d.imagenet.log &
->>>>>>> 13473f9b141a3563a8ba2423f630a085f79b8724
+
 
  
 
