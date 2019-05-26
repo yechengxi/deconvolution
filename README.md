@@ -72,6 +72,7 @@
  * epochs - the number of epochs to run
  * dataset - the dataset to use (cifar10, cifar100) (for imagenet you need the other main file)
  * lr - sets the learning rate
+ * num groups final - additional channel deconvolution done at the last fully connected layer.  Set to 0 for Batch norm and 512 for deconvolution
 
  ## Running the examples from the paper
 
@@ -90,7 +91,20 @@ and see how many GPUS you have.  They will be given a number from 0 -> n, where 
 ```
 CUDA_VISIBLE_DEVICES=0,1,2
 ```
-Putting less devices will still work, but it will be slower. To be safe, you can always just copy the code we have given you here, which sets CUDA_VISIBLE_DEVICES to be 0, the first GPU. 
+Before python main.py. Putting less devices will still work, but it will be slower. To be safe, you can always just copy the code we have given you here, which sets CUDA_VISIBLE_DEVICES to be 0, the first GPU.
+
+ As an example, to run our settings for the CIFAR-10 20-epoch run, with .001 weight decay and 128 batch size, on the vgg11 architecture, you would run:
+
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 20 --dataset cifar10  --batch-size 128 --msg True --deconv False --num-groups-final 0 --wd .001
+```
+for batch norm, and
+
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 20 --dataset cifar10  --batch-size 128 --msg True --deconv True --num-groups-final 512 --wd .001
+```
+
+for deconvolution
  
  ## 1. For logistic regression (--loss L2 for L2 linear regression): 
 
@@ -128,7 +142,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch resnet50 --
 ```
 deconv.:
 ```
-CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch resnet50 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --num-groups-final 0 
+CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch resnet50 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --num-groups-final 512 
 ```
 ## 5. Train a vgg[11/13/19] network on CIFAR-10/100 (with/without deconv)
 
@@ -142,7 +156,7 @@ deconv:
 
 ```
 
-CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --num-groups-final 0
+CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --num-groups-final 512
 
 ```
 # 7. Training with Channel Deconv Only
@@ -152,7 +166,7 @@ To train a network with channel deconv only, use mode '3' in the --mode argument
 example (running vgg11 with channel deconv only):
 
 ```
-CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --mode 3 --num-groups-final 0
+CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --mode 3 --num-groups-final 512
 ```
    
  # 6. imagenet dataset:
