@@ -165,18 +165,18 @@ CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epo
 
 
 1. original resnet18 (90 epochs, use --epochs xx to change)
-
+```
 python main_imagenet.py -a resnet18 -j 32 imagenet/ILSVRC/Data/CLS-LOC 
-
+```
 2. deconv resnet18
-
+```
 python main_imagenet.py -a resnet18d -j 32 imagenet/ILSVRC/Data/CLS-LOC --deconv True
-
+```
 3. deconv vgg11
  
-
-python main_imagenet.py -a vgg11d -j 32 /vulcan/scratch/cxy/Data/imagenet/ILSVRC/Data/CLS-LOC --deconv True --lr 0.01 >vgg11d.imagenet.log &
-
+```
+python main_imagenet.py -a vgg11d -j 32 /vulcan/scratch/cxy/Data/imagenet/ILSVRC/Data/CLS-LOC --deconv True --lr 0.01 
+```
 
  
 
