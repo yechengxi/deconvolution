@@ -21,14 +21,14 @@
 
  The major keywords to note are:
 
- deconv - set to True or False if you want to test deconv (True) or BN (False)
- arch - use a given architecture (resnet50, vgg11, vgg13, vgg19, densenet121)
- wd - sets the weight decay to a given value
- batch-size - sets the batch size
- method - sets the method for deconv.  3 for channel-only and 4 for full
- epochs - the number of epochs to run
- dataset - the dataset to use (cifar10, cifar100) (for imagenet you need the other main file)
- lr - sets the learning rate
+ * deconv - set to True or False if you want to test deconv (True) or BN (False)
+ * arch - use a given architecture (resnet50, vgg11, vgg13, vgg19, densenet121)
+ * wd - sets the weight decay to a given value
+ * batch-size - sets the batch size
+ * method - sets the method for deconv.  3 for channel-only and 4 for full
+ * epochs - the number of epochs to run
+ * dataset - the dataset to use (cifar10, cifar100) (for imagenet you need the other main file)
+ * lr - sets the learning rate
 
 
  ## 1. For logistic regression (--loss L2 for L2 linear regression): 
