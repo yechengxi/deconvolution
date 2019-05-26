@@ -1,4 +1,4 @@
- # Deconv
+ # Network Deconvolution
 
  ## Environment
 
