@@ -108,22 +108,14 @@ for deconvolution
  
  ## 1. For logistic regression (--loss L2 for L2 linear regression): 
 
-
+```
 python main.py --lr .1 --optimizer SGD --arch simple_v1 --epochs 1 --dataset cifar10  --batch-size 512 --msg True --method 1 --loss CE
  
 
- ## 2. For a simple cnn: 
-
-
-method 1: vanilla network + sgd, method 2: batch norm + sgd, method 3: channel deconv with 32 groups 
-
-
-```
-python main.py --lr .1 --optimizer SGD --arch mlp --epochs 20 --dataset mnist  --batch-size 512 
 ```
 
 
-## 3. Train a resnet on CIFAR-10 (with/without deconv):
+## 2. Train a resnet on CIFAR-10 (with/without deconv):
 
 batch normalization:
 ```
@@ -134,7 +126,7 @@ deconv:
 CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch resnet --epochs 100 --dataset cifar10  --num-groups-final 512 --batch-size 512 --msg True --deconv True 
 ```
 
- ## 4. Train a resnet50 on CIFAR-100 (with/without deconv):
+ ## 3. Train a resnet50 on CIFAR-100 (with/without deconv):
 
 batch norm.:
 ```
@@ -144,7 +136,7 @@ deconv.:
 ```
 CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch resnet50 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --num-groups-final 512 
 ```
-## 5. Train a vgg[11/13/19] network on CIFAR-10/100 (with/without deconv)
+## 4. Train a vgg[11/13/19] network on CIFAR-10/100 (with/without deconv)
 
 For vgg13 or vgg19, replace vgg11 with either vgg13 or vgg19. 
 
@@ -159,7 +151,7 @@ deconv:
 CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --num-groups-final 512
 
 ```
-# 7. Training with Channel Deconv Only
+# 5. Training with Channel Deconv Only
 
 To train a network with channel deconv only, use mode '3' in the --mode argument with --deconv set to True.
 
