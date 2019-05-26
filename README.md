@@ -1,16 +1,51 @@
  # Deconv
 
+ ## Environment
 
+ Our code was developed and requires Ubuntu 14 or greater, and python 3.5 or greater.
+
+ You can install python3.5 in ubuntu using:
+
+```
+ sudo add-apt-repository ppa:deadsnakes/ppa
+ sudo apt-get update
+ sudo apt-get install python3.5
+
+```
  ## Install Dependencies
 
- We recommend using pip to install the required dependencies:
+ This code requires the use of python3.5 or greater.
+ 
+ We recommend using pip to install the required dependencies.  For python3+, use pip3:
 
+ Install scipy and numpy:
  ```
-	
+ sudo pip3 install scipy numpy
+ ```
+
+ Install tensorflow:
+ ```
+ sudo pip3 install tensorflow
+ ```
+
+ Install pyTorch:
+
+ sudo pip3 install torch torchvision
   
  ```
+ ## Running in Python
 
- This code also requires at least one CUDA-enabled GPU from NVIDIA to run properly. You can test to see if you have this availble by running:
+ If you have python 2.7 installed as your default, some machines require you to call the newer versions of python with a separate name.  For example, you may have to run:
+
+ ```
+ python3.5 example_code.py
+ ```
+
+ to actually invoke python3.5 on your machine. If this is the case, wherever we have written "python main.py" you will just have to replace with "python3.5 main.py" or whichever version you have installed. 
+
+ ## Checking your GPU
+
+ This code also requires at least one CUDA-enabled GPU from NVIDIA to run properly. You can test to see if you have a CUDA GPU available by running:
 
  ```
  nvidia-smi
@@ -112,12 +147,13 @@ CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epo
 ```
 # 7. Training with Channel Deconv Only
 
-To train a network with channel deconv only, use method '3' in the --method argument.
+To train a network with channel deconv only, use mode '3' in the --mode argument with --deconv set to True.
 
-example:
+example (running vgg11 with channel deconv only):
 
-
-
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --lr .1 --optimizer SGD --arch vgg11 --epochs 100 --dataset cifar100  --batch-size 128 --msg True --deconv True --mode 3 --num-groups-final 0
+```
    
  # 6. imagenet dataset:
 
