@@ -29,7 +29,7 @@
  ```
 
  Install pyTorch:
-
+ ```
  sudo pip3 install torch torchvision
   
  ```
