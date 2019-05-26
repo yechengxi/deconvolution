@@ -5,19 +5,19 @@
 
  We recommend using pip to install the required dependencies:
 
- '''
+ ```
 	
   
- '''
+ ```
 
  ## Settings Overview
  We have included a few settings you can add into the run command.
 
  The basic run command (for non-imagenet dataset) is:
 
- '''
+ ```
  python main.py --[keyword] [argument] ...
- '''
+ ```
 
  The major keywords to note are:
 
