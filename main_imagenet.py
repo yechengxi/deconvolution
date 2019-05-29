@@ -119,6 +119,8 @@ def main():
             args.deconv=partial(DeConv2d, bias=args.bias,eps=args.eps, n_iter=args.deconv_iter, mode=args.mode, num_groups=args.num_groups)
         elif args.mode==5:
             args.deconv = partial(FastDeconv, bias=args.bias, eps=args.eps, n_iter=args.deconv_iter,num_groups=args.num_groups)
+    else:
+        args.num_groups_final=0
 
     if args.num_groups_final > 0:
         args.channel_deconv = partial(ChannelDeconv, num_groups=args.num_groups_final, eps=args.eps,
