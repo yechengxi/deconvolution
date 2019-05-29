@@ -23,17 +23,29 @@
  sudo pip3 install scipy numpy
  ```
 
- Install tensorflow:
- ```
- sudo pip3 install tensorflow
- ```
-
- Install pyTorch:
+ Install PyTorch:
  ```
  sudo pip3 install torch torchvision
   
  ```
- ## Running in Python
+ 
+ Install TensorboardX:
+ 
+ ```
+ sudo pip3 install tensorboardX
+ 
+ ```
+
+ (optional, for visualization) Install tensorflow:
+
+ ```
+ sudo pip3 install tensorflow
+ 
+ ```
+
+
+
+## Running in Python
 
  If you have python 2.7 installed as your default, some machines require you to call the newer versions of python with a separate name.  For example, you may have to run:
 
@@ -68,7 +80,7 @@
  * arch - use a given architecture (resnet50, vgg11, vgg13, vgg19, densenet121)
  * wd - sets the weight decay to a given value
  * batch-size - sets the batch size
- * method - sets the method for deconv.  3 for channel-only and 4 for full
+ * mode - sets the method for deconv.  3 for channel-only and 4 for full
  * epochs - the number of epochs to run
  * dataset - the dataset to use (cifar10, cifar100) (for imagenet you need the other main file)
  * lr - sets the learning rate
