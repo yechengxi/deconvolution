@@ -29,10 +29,10 @@
   
  ```
  
- Install TensorboardX:
+ Install TensorboardX, matplotlib:
  
  ```
- sudo pip3 install tensorboardX
+ sudo pip3 install tensorboardX matplotlib
  
  ```
 
