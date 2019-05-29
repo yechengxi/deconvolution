@@ -208,7 +208,7 @@ class DeConv2d(conv._ConvNd):
             self.register_buffer('running_deconv', torch.eye(num_features))
             self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
 
-    def forward(self, x,visualize=False):
+    def forward(self, x):
 
         N,C,H,W=x.shape
         out_h=(H+2*self.padding[0]-self.kernel_size[0]+1)//self.stride[0]
@@ -273,14 +273,6 @@ class DeConv2d(conv._ConvNd):
 
             #4. convolve
 
-            if visualize:
-                w = torch.zeros(self.weight.shape[1], self.weight.shape[1], self.weight.shape[2], self.weight.shape[3],
-                                dtype=x.dtype, device=x.device)
-                c=self.weight.shape[1]
-                w[torch.arange(c).long(), torch.arange(c).long(), self.weight.shape[2] // 2, self.weight.shape[3] // 2] = 1.
-                out_unf = X_deconv.matmul(w.view(w.size(0), -1).t()).transpose(1, 2).view(N, -1, out_h, out_w)
-                return out_unf
-
             w = self.weight
             out_unf = X_deconv.matmul(w.view(w.size(0), -1).t()).transpose(1, 2).view(N,-1,out_h,out_w)
             if self.bias is not None:
@@ -291,17 +283,11 @@ class DeConv2d(conv._ConvNd):
 
             return out_unf#.contiguous()
 
-            """
-            #4. convolve(slower )
-            X_deconv = torch.nn.functional.fold(X_deconv.transpose(1, 2), (H, W), kernel_size=self.kernel_size,padding=self.padding)/self.kernel_size[0]/self.kernel_size[1]
-            return F.conv2d(X_deconv, w, None, self.stride, self.padding, self.dilation, 1)
-            """
 
 
-
-#this version is faster but slightly weaker, it does not remove the mean.
+#this version is faster but slightly weaker. We approximately remove the mean.
 class FastDeconv(conv._ConvNd):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, eps=1e-2, n_iter=5, momentum=0.1, num_groups=16):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=True, eps=1e-2, n_iter=5, momentum=0.1, num_groups=16):
 
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
@@ -316,24 +302,37 @@ class FastDeconv(conv._ConvNd):
         self.eps = eps
         super(FastDeconv, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
-            False, _pair(0), 1, None, padding_mode='zeros')
+            False, _pair(0), 1, bias, padding_mode='zeros')
 
-        num_features = self.kernel_size[0] * self.kernel_size[1]
         if num_groups>in_channels:
             num_groups=in_channels
-
         self.num_groups=num_groups
-        num_features*=num_groups
 
-        self.num_features = num_features
+        self.num_features = self.kernel_size[0] * self.kernel_size[1]*num_groups
 
-        self.register_buffer('running_deconv', torch.eye(num_features))
+        self.register_buffer('running_mean', torch.zeros(self.num_groups, 1))
+        self.register_buffer('running_deconv', torch.eye(self.num_features))
 
-    def forward(self, x,visualize=False):
+    def forward(self, x):
 
         N,C,H,W=x.shape
 
-        #1. im2col: N x cols x pixels
+        # 1.subtract mean (this is a fast approximation)
+        x=x.permute(1,0,2,3).contiguous().view(self.num_groups,-1)
+
+        # track stats for evaluation
+        if self.training:
+            x_mean = x.mean(-1, keepdim=True)
+            self.running_mean.mul_(1 - self.momentum)
+            self.running_mean.add_(x_mean.detach() * self.momentum)
+        else:
+            x_mean = self.running_mean
+
+        x = x - x_mean
+
+        x=x.view(C,N,H,W).contiguous().permute(1,0,2,3)
+
+        #2. im2col: N x cols x pixels
         inp_unf = torch.nn.functional.unfold(x, self.kernel_size,self.dilation,self.padding,self.stride)
 
         #(k*k*G, C//G*N*H*W) for grouped pixel deconv
@@ -351,16 +350,8 @@ class FastDeconv(conv._ConvNd):
         else:
             deconv = self.running_deconv
 
-        #deconv
-        if visualize:
-            w=torch.zeros(self.weight.shape[1],self.weight.shape[1],self.weight.shape[2],self.weight.shape[3],dtype=x.dtype,device=x.device)
-            c = self.weight.shape[1]
-            w[torch.arange(c).long(), torch.arange(c).long(), self.weight.shape[2] // 2, self.weight.shape[3] // 2] = 1.
-            w = w.view(w.shape[0], -1).t().contiguous().view(self.num_features, -1)
-            w = deconv @ w
-            w = w.view(-1, self.weight.shape[1]).t().view(self.weight.shape[1],self.weight.shape[1],self.weight.shape[2],self.weight.shape[3])
-            return F.conv2d(x, w.view(self.weight.shape), None, self.stride, self.padding, self.dilation, 1)
+        #deconv + conv
         w=self.weight.view(self.weight.shape[0],-1).t().contiguous().view(self.num_features,-1)
         w=deconv@w
         w=w.view(-1,self.weight.shape[0]).t().view(self.weight.shape)
-        return F.conv2d(x, w.view(self.weight.shape), None, self.stride, self.padding, self.dilation, 1)
+        return F.conv2d(x, w.view(self.weight.shape), self.bias, self.stride, self.padding, self.dilation, 1)
