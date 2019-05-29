@@ -20,7 +20,7 @@
 
  Install scipy and numpy:
  ```
- sudo pip3 install scipy numpy
+ sudo pip3 install scipy numpy tensorboardX matplotlib
  ```
 
  Install PyTorch:
@@ -29,13 +29,6 @@
   
  ```
  
- Install TensorboardX, matplotlib:
- 
- ```
- sudo pip3 install tensorboardX matplotlib
- 
- ```
-
  (optional, for visualization) Install tensorflow:
 
  ```
