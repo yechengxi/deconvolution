@@ -99,7 +99,7 @@ parser.add_argument('--save-plot', default=True, type=distutils.util.strtobool, 
 parser.add_argument('--deconv', default=False, type=distutils.util.strtobool, help='use deconv')
 parser.add_argument('--num-groups', default=16, type=int, help='number of groups in deconv')
 parser.add_argument('--deconv-iter', default=5, type=int, help='number of iters in deconv')
-parser.add_argument('--mode', default=4, type=int, help='deconv mode(use 3 for speed, 4 for quality)')
+parser.add_argument('--mode', default=5, type=int, help='deconv mode(use 3 for speed, 4 for quality)')
 parser.add_argument('--eps', default=1e-2, type=float, help='for regularization')
 parser.add_argument('--bias', default=True, type=distutils.util.strtobool, help='use bias term in deconv')
 parser.add_argument('--num-groups-final', default=32, type=int, help='number of groups in final deconv')
@@ -118,7 +118,7 @@ def main():
         if args.mode < 5:
             args.deconv=partial(DeConv2d, bias=args.bias,eps=args.eps, n_iter=args.deconv_iter, mode=args.mode, num_groups=args.num_groups)
         elif args.mode==5:
-            args.deconv = partial(FastDeconv, eps=args.eps, n_iter=args.deconv_iter,num_groups=args.num_groups)
+            args.deconv = partial(FastDeconv, bias=args.bias, eps=args.eps, n_iter=args.deconv_iter,num_groups=args.num_groups)
 
     if args.num_groups_final > 0:
         args.channel_deconv = partial(ChannelDeconv, num_groups=args.num_groups_final, eps=args.eps,
