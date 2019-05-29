@@ -70,7 +70,7 @@ def parse_opts():
     parser.add_argument('--deconv', default=False, type=distutils.util.strtobool, help='use deconv')
     parser.add_argument('--num-groups', default=16,type=int, help='number of groups in deconv')
     parser.add_argument('--deconv-iter', default=5,type=int, help='number of iters in deconv')
-    parser.add_argument('--mode', default=4,type=int, help='deconv mode(use 3 for speed, 4 for quality, 5 for fast approximation of 4)')
+    parser.add_argument('--mode', default=5,type=int, help='deconv mode(use 3 for speed, 4 for quality, 5 for fast approximation of 4)')
     parser.add_argument('--eps', default=1e-2,type=float, help='for regularization')
     parser.add_argument('--bias', default=True,type=distutils.util.strtobool, help='use bias term in deconv')
     parser.add_argument('--num-groups-final', default=512, type=int, help='number of groups in final deconv')
