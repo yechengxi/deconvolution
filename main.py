@@ -34,7 +34,7 @@ if __name__ == '__main__':
         if opts.mode<5:
             opts.deconv=partial(DeConv2d,bias=opts.bias, eps=opts.eps, n_iter=opts.deconv_iter, mode=opts.mode, num_groups=opts.num_groups)
         elif opts.mode==5:
-            opts.deconv = partial(FastDeconv, eps=opts.eps, n_iter=opts.deconv_iter,num_groups=opts.num_groups)
+            opts.deconv = partial(FastDeconv, bias=opts.bias, eps=opts.eps, n_iter=opts.deconv_iter,num_groups=opts.num_groups)
     if opts.num_groups_final>0:
         opts.channel_deconv=partial(ChannelDeconv, num_groups=opts.num_groups_final,eps=opts.eps, n_iter=opts.deconv_iter)
     else:
