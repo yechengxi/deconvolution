@@ -80,7 +80,7 @@
  * arch - use a given architecture (resnet50, vgg11, vgg13, vgg19, densenet121)
  * wd - sets the weight decay to a given value
  * batch-size - sets the batch size
- * mode - sets the method for deconv.  3 for channel-only and 4 for full
+ * mode - sets the method for deconv.  3 for channel-only and 4 for full, 5 for a fast and efficient approximate of 4 (default)
  * epochs - the number of epochs to run
  * dataset - the dataset to use (cifar10, cifar100) (for imagenet you need the other main file)
  * lr - sets the learning rate
