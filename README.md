@@ -180,7 +180,7 @@ python main_imagenet.py -a resnet18d -j 32 imagenet/ILSVRC/Data/CLS-LOC --deconv
 3. deconv vgg11
  
 ```
-python main_imagenet.py -a vgg11d -j 32 /vulcan/scratch/cxy/Data/imagenet/ILSVRC/Data/CLS-LOC --deconv True --lr 0.01 
+python main_imagenet.py -a vgg11d -j 32 imagenet/ILSVRC/Data/CLS-LOC --deconv True --lr 0.01 
 ```
 
  
