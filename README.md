@@ -1,5 +1,12 @@
  # Network Deconvolution
 
+ ## FAQ
+ ### Why is it called deconvolution?
+
+Imagine you have a sharp signal I. However, nature is applying a blur to the signal so what you observe is: B=K*I. This blurred signal makes machine learning very hard.
+
+What we want to do is a deconvolution that recovers the clear/white signal I=inv(K)*B. And we use this deconvolved signal for kernel learning in the CNN. The blur is measured by the square root of the covariance. 
+
  ## Environment
 
  Our code was developed and requires Ubuntu 14 or greater, and python 3.5 or greater.
