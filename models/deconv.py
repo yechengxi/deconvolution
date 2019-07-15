@@ -60,7 +60,7 @@ def isqrt_newton_schulz_autograd(A, numIters):
 
 #deconvolve channels
 class ChannelDeconv(nn.Module):
-    def __init__(self,  num_groups, eps=1e-2,n_iter=5,momentum=0.1,debug=False):
+    def __init__(self,  num_groups, eps=1e-2,n_iter=5,momentum=0.1,sampling_stride=3,debug=False):
         super(ChannelDeconv, self).__init__()
 
         self.eps = eps
@@ -75,7 +75,7 @@ class ChannelDeconv(nn.Module):
         self.register_buffer('running_mean2', torch.zeros(1, 1))
         self.register_buffer('running_var', torch.ones(1, 1))
         self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
-
+        self.sampling_stride=sampling_stride
     def forward(self, x):
         x_shape = x.shape
         if len(x.shape)==2:
@@ -91,14 +91,18 @@ class ChannelDeconv(nn.Module):
         if c==0:
             print('Error! num_groups should be set smaller.')
 
-
         #step 1. remove mean
         if c!=C:
             x1=x[:,:c].permute(1,0,2,3).contiguous().view(G,-1)
         else:
             x1=x.permute(1,0,2,3).contiguous().view(G,-1)
 
-        mean1 = x1.mean(-1, keepdim=True)
+        if self.sampling_stride > 1 and H >= self.sampling_stride and W >= self.sampling_stride:
+            x1_s = x1[:,::self.sampling_stride**2]
+        else:
+            x1_s=x1
+
+        mean1 = x1_s.mean(-1, keepdim=True)
 
         if self.num_batches_tracked==0:
             self.running_mean1.copy_(mean1.detach())
@@ -112,7 +116,7 @@ class ChannelDeconv(nn.Module):
 
         #step 2. calculate deconv@x1 = cov^(-0.5)@x1
         if self.training:
-            cov = x1 @ x1.t() / x1.shape[1] + self.eps * torch.eye(G, dtype=x.dtype, device=x.device)
+            cov = x1_s @ x1_s.t() / x1_s.shape[1] + self.eps * torch.eye(G, dtype=x.dtype, device=x.device)
             deconv = isqrt_newton_schulz_autograd(cov, self.n_iter)
 
         if self.num_batches_tracked==0:
@@ -136,8 +140,13 @@ class ChannelDeconv(nn.Module):
         # normalize the remaining channels
         if c!=C:
             x_tmp=x[:, c:].view(N,-1)
-            mean2=x_tmp.mean()
-            var=x_tmp.var()
+            if self.sampling_stride > 1 and H>=self.sampling_stride and W>=self.sampling_stride:
+                x_s = x_tmp[:, ::self.sampling_stride ** 2]
+            else:
+                x_s = x_tmp
+
+            mean2=x_s.mean()
+            var=x_s.var()
 
             if self.num_batches_tracked == 0:
                 self.running_mean2.copy_(mean2.detach())
@@ -162,7 +171,6 @@ class ChannelDeconv(nn.Module):
         if len(x_shape)==2:
             x1=x1.view(x_shape)
         return x1
-
 
 
 
@@ -284,10 +292,9 @@ class DeConv2d(conv._ConvNd):
             return out_unf#.contiguous()
 
 
-
 #this version is faster but slightly weaker. We approximately remove the mean.
 class FastDeconv(conv._ConvNd):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=True, eps=1e-2, n_iter=5, momentum=0.1, num_groups=16):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=True, eps=1e-2, n_iter=5, momentum=0.1, num_groups=16,sampling_stride=3):
 
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
@@ -310,19 +317,21 @@ class FastDeconv(conv._ConvNd):
 
         self.num_features = self.kernel_size[0] * self.kernel_size[1]*num_groups
 
-        self.register_buffer('running_mean', torch.zeros(self.num_groups, 1))
+        self.register_buffer('running_mean', torch.zeros(1,self.num_groups, 1, 1))
         self.register_buffer('running_deconv', torch.eye(self.num_features))
+        self.sampling_stride=[sampling_stride*s for s in stride]
 
     def forward(self, x):
 
         N,C,H,W=x.shape
+        N1,C1=N*C//self.num_groups,self.num_groups
 
         # 1.subtract mean (this is a fast approximation)
-        x=x.permute(1,0,2,3).contiguous().view(self.num_groups,-1)
+        x=x.view(N1,C1,H,W)
 
         # track stats for evaluation
         if self.training:
-            x_mean = x.mean(-1, keepdim=True)
+            x_mean = x.mean((0,2,3), keepdim=True)
             self.running_mean.mul_(1 - self.momentum)
             self.running_mean.add_(x_mean.detach() * self.momentum)
         else:
@@ -330,13 +339,13 @@ class FastDeconv(conv._ConvNd):
 
         x = x - x_mean
 
-        x=x.view(C,N,H,W).contiguous().permute(1,0,2,3)
+        x=x.view(N,C,H,W)
 
         #2. im2col: N x cols x pixels
-        inp_unf = torch.nn.functional.unfold(x, self.kernel_size,self.dilation,self.padding,self.stride)
+        inp_unf = torch.nn.functional.unfold(x, self.kernel_size,self.dilation,self.padding,self.sampling_stride)
 
         #(k*k*G, C//G*N*H*W) for grouped pixel deconv
-        X = inp_unf.permute(1, 0, 2).contiguous().view(self.num_features, -1)
+        X = inp_unf.transpose(0,1).contiguous().view(self.num_features, -1)
 
         #3. calculate COV, COV^(-0.5), then deconv
         if self.training:

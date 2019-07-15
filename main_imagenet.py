@@ -56,7 +56,7 @@ parser.add_argument('-b', '--batch-size', default=256, type=int,
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--lr-scheduler', default='cosine', help='learning rate scheduler(multistep|cosine)')
-parser.add_argument('--milestone', default=0.4, type=float, help='milestone in multistep scheduler')
+parser.add_argument('--milestone', default=0.3, type=float, help='milestone in multistep scheduler')
 parser.add_argument('--multistep-gamma', default=0.1, type=float,
                     help='the gamma parameter in multistep|plateau scheduler')
 
@@ -92,19 +92,21 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'multi node data parallel training')
 parser.add_argument('--dataset', default='imagenet', help='dataset')
 
-parser.add_argument('--tensorboard', default=True, type=distutils.util.strtobool, help='use tensorboard')
+parser.add_argument('--tensorboardX', default=True, type=distutils.util.strtobool, help='use tensorboardX')
+parser.add_argument('--tensorboard', default=False, type=distutils.util.strtobool, help='use tensorboard')
 parser.add_argument('--save-plot', default=True, type=distutils.util.strtobool, help='save plots with matplotlib')
 
 # for deconv
 parser.add_argument('--deconv', default=False, type=distutils.util.strtobool, help='use deconv')
 parser.add_argument('--num-groups', default=16, type=int, help='number of groups in deconv')
 parser.add_argument('--deconv-iter', default=5, type=int, help='number of iters in deconv')
-parser.add_argument('--mode', default=5, type=int, help='deconv mode(use 3 for speed, 4 for quality, 5 for fast approximation of 4 )')
+parser.add_argument('--mode', default=5, type=int, help='deconv mode(use 3 for speed, 4 for quality, 5 for both )')
 parser.add_argument('--eps', default=1e-2, type=float, help='for regularization')
 parser.add_argument('--bias', default=True, type=distutils.util.strtobool, help='use bias term in deconv')
 parser.add_argument('--num-groups-final', default=32, type=int, help='number of groups in final deconv')
 parser.add_argument('--test-run', default=False, type=distutils.util.strtobool, help='test run only')
 parser.add_argument('--test-iter', default=500, type=int, help='test iterations')
+parser.add_argument('--stride', default=3, type=int, help='sampling stride in deconv')
 
 best_acc1 = 0
 n_iter = 0
@@ -118,13 +120,11 @@ def main():
         if args.mode < 5:
             args.deconv=partial(DeConv2d, bias=args.bias,eps=args.eps, n_iter=args.deconv_iter, mode=args.mode, num_groups=args.num_groups)
         elif args.mode==5:
-            args.deconv = partial(FastDeconv, bias=args.bias, eps=args.eps, n_iter=args.deconv_iter,num_groups=args.num_groups)
-    else:
-        args.num_groups_final=0
+            args.deconv = partial(FastDeconv, bias=args.bias, eps=args.eps, n_iter=args.deconv_iter,num_groups=args.num_groups,sampling_stride=args.stride)
 
     if args.num_groups_final > 0:
         args.channel_deconv = partial(ChannelDeconv, num_groups=args.num_groups_final, eps=args.eps,
-                                      n_iter=args.deconv_iter)
+                                      n_iter=args.deconv_iter,sampling_stride=args.stride)
     else:
         args.channel_deconv = None
 
@@ -136,11 +136,15 @@ def main():
     args.eval_top5=[]
     args.cur_losses=[]
 
-    if args.tensorboard:
-        #from torch.utils.tensorboard import SummaryWriter
+    if args.tensorboardX:
         from tensorboardX import SummaryWriter
 
         args.writer = SummaryWriter(args.log_dir)
+
+    if args.tensorboard:
+        from tf_logger import Logger
+        args.writer=Logger(args.log_dir)
+
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -201,9 +205,19 @@ def main_worker(gpu, ngpus_per_node, args):
         elif args.arch=='resnet18d':
             from models.resnet_imagenet import resnet18d
             model = resnet18d(deconv=args.deconv,channel_deconv=args.channel_deconv)
+        elif args.arch == 'resnet34d':
+            from models.resnet_imagenet import resnet34d
+            model = resnet34d(deconv=args.deconv, channel_deconv=args.channel_deconv)
+        elif args.arch == 'resnet50d':
+            from models.resnet_imagenet import resnet50d
+            model = resnet50d(deconv=args.deconv, channel_deconv=args.channel_deconv)
+
         elif args.arch=='vgg11d':
             from models.vgg_imagenet import vgg11d
             model = vgg11d('VGG11d', deconv=args.deconv, channel_deconv=args.channel_deconv)
+        elif args.arch == 'vgg16d':
+            from models.vgg_imagenet import vgg16d
+            model = vgg16d('VGG16d', deconv=args.deconv, channel_deconv=args.channel_deconv)
         elif args.arch == 'densenet121d':
             from models.densenet_imagenet import densenet121d
             model = densenet121d(deconv=args.deconv, channel_deconv=args.channel_deconv)
@@ -264,6 +278,7 @@ def main_worker(gpu, ngpus_per_node, args):
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
+            del checkpoint
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
@@ -316,8 +331,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if args.resume:
         lr = args.lr
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
+        #for param_group in optimizer.param_groups:
+        #    param_group['lr'] = lr
         if args.lr_scheduler == 'multistep':
             for i in range(args.start_epoch):
                 args.current_scheduler.step()
@@ -466,10 +481,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         if i % args.print_freq == 0:
             progress.print(i)
-            if args.tensorboard:
+            if args.tensorboardX:
                 args.writer.add_scalar('CurrentLoss', losses.val, n_iter)
 
-    if args.tensorboard:
+
+
+    if args.tensorboardX:
         args.writer.add_scalar('Loss/Train',losses.avg,epoch+1)
         args.writer.add_scalar('Prec/Train1',top1.avg,epoch+1)
         args.writer.add_scalar('Prec/Train5', top5.avg, epoch + 1)
@@ -519,9 +536,9 @@ def validate(val_loader, model, criterion,epoch, args):
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
               .format(top1=top1, top5=top5))
 
-        if args.tensorboard:
-            args.writer.add_scalar('Loss/Val',losses.avg,epoch+1)
-            args.writer.add_scalar('Prec/Val1',top1.avg,epoch+1)
+        if args.tensorboardX:
+            args.writer.add_scalar('Loss/Val',losses.avg,epoch + 1)
+            args.writer.add_scalar('Prec/Val1',top1.avg,epoch + 1)
             args.writer.add_scalar('Prec/Val5', top5.avg, epoch + 1)
 
         args.eval_losses.append(losses.avg)
@@ -621,6 +638,7 @@ def save_path_formatter(args):
     key_map['batch_size']='bs'
     key_map['seed']='seed'
     key_map['deconv'] = 'deconv'
+    key_map['stride']='stride'
     key_map['num_groups'] = 'g'
     key_map['deconv_iter'] = 'it'
     key_map['mode'] = 'm'

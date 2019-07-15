@@ -53,6 +53,7 @@ def save_path_formatter(args):
 
     key_map['deconv']='deconv'
     key_map['num_groups']='g'
+    key_map['stride']='stride'
     key_map['deconv_iter'] = 'it'
     key_map['mode'] = 'm'
     key_map['eps'] = 'eps'

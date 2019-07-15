@@ -7,6 +7,12 @@ Imagine you have a sharp signal I. However, nature is applying a blur to the sig
 
 What we want to do is a deconvolution that recovers the clear/white signal I=inv(K)*B. And we use this deconvolved signal for kernel learning in the CNN. The blur calculated from the blurred observation using the square root of the covariance. 
 
+ ### What is the walltime?
+ 
+On ImageNet dataset, we benchmark the walltime with 1 GTX1080Ti GPU and 16 CPUs. It takes 1 hour/epoch to train a regular ResNet-18. It takes 1 hour and 3 minutes to train the same network with network deconvolution.
+
+In the latest update, we introduce a sampling trick for acceleration. Note that the covariance matrix is usually small compared to the number of pixels involved in a batch of data. By default we use a 3x subsampling when calculating the covariance matrix. Experimentally we notice this does not reduce the quality. Instead, it allows us to split data over fewer GPUs and improve the quality.  
+
  ## Environment
 
  Our code was developed and requires Ubuntu 14 or greater, and python 3.5 or greater.

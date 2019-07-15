@@ -34,12 +34,12 @@ if __name__ == '__main__':
         if opts.mode<5:
             opts.deconv=partial(DeConv2d,bias=opts.bias, eps=opts.eps, n_iter=opts.deconv_iter, mode=opts.mode, num_groups=opts.num_groups)
         elif opts.mode==5:
-            opts.deconv = partial(FastDeconv, bias=opts.bias, eps=opts.eps, n_iter=opts.deconv_iter,num_groups=opts.num_groups)
+            opts.deconv = partial(FastDeconv,bias=opts.bias, eps=opts.eps, n_iter=opts.deconv_iter,num_groups=opts.num_groups,sampling_stride=opts.stride)
     else:
         opts.num_groups_final=0
 
     if opts.num_groups_final>0:
-        opts.channel_deconv=partial(ChannelDeconv, num_groups=opts.num_groups_final,eps=opts.eps, n_iter=opts.deconv_iter)
+        opts.channel_deconv=partial(ChannelDeconv, num_groups=opts.num_groups_final,eps=opts.eps, n_iter=opts.deconv_iter,sampling_stride=opts.stride)
     else:
         opts.channel_deconv=None
 
@@ -237,9 +237,6 @@ if __name__ == '__main__':
     if opts.arch=='resnet18d':
         from models.resnet_imagenet import resnet18d
         net = resnet18d(num_classes=opts.num_outputs,deconv=opts.deconv,channel_deconv=opts.channel_deconv)
-
-    if opts.arch=='resnet34':
-        net = ResNet34(num_classes=opts.num_outputs,deconv=opts.deconv,channel_deconv=opts.channel_deconv)
 
     if opts.arch=='resnet50':
         net = ResNet50(num_classes=opts.num_outputs,deconv=opts.deconv,channel_deconv=opts.channel_deconv)
