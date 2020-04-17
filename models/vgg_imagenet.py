@@ -1,9 +1,9 @@
 import torch.nn as nn
 #from .utils import load_state_dict_from_url
-
+from models.deconv import *
 
 __all__ = [
-    'VGG', 'vgg11', 'vgg11_bn', 'vgg11d', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
+    'VGG', 'vgg11', 'vgg11_bn', 'vgg11d', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn','vgg16d'
     'vgg19_bn', 'vgg19',
 ]
 
@@ -65,7 +65,7 @@ class VGG(nn.Module):
 
     def _initialize_weights(self):
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, nn.Conv2d) or isinstance(m, FastDeconv):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
@@ -96,7 +96,11 @@ def make_layers(cfg, batch_norm=False,deconv=None):
             if v == 'M':
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
             else:
-                conv2d = deconv(in_channels, v, kernel_size=3, padding=1)
+                if in_channels==3:
+                    conv2d = deconv(in_channels, v, kernel_size=3, padding=1, freeze=True, n_iter=15, sampling_stride=3)
+                else:
+                    conv2d = deconv(in_channels, v, kernel_size=3, padding=1)
+
                 if batch_norm:
                     layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
                 else:
@@ -195,6 +199,16 @@ def vgg16_bn(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _vgg('vgg16_bn', 'D', True, pretrained, progress, **kwargs)
+
+def vgg16d(pretrained=False, progress=True, deconv=None,channel_deconv=None, **kwargs):
+    """VGG 16-layer model (configuration "D") with batch normalization
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        progress (bool): If True, displays a progress bar of the download to stderr
+    """
+    return _vgg('vgg16_bn', 'D', False, pretrained, progress, deconv,channel_deconv,  **kwargs)
+
 
 
 def vgg19(pretrained=False, progress=True, **kwargs):

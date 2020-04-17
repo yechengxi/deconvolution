@@ -12,9 +12,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-"""
-No batch normalization for non-DeConv
-"""
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -32,16 +29,18 @@ class BasicBlock(nn.Module):
 
 
         self.shortcut = nn.Sequential()
-        #self.drop = nn.Dropout2d(p=0.2)
 
         if not deconv:
             self.bn1 = nn.BatchNorm2d(planes)
             self.bn2 = nn.BatchNorm2d(planes)
+            #self.bn1 = nn.GroupNorm(planes//16,planes)
+            #self.bn2 = nn.GroupNorm(planes//16,planes)
 
             if stride != 1 or in_planes != self.expansion*planes:
                 self.shortcut = nn.Sequential(
                     nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
                     nn.BatchNorm2d(self.expansion*planes)
+                    #nn.GroupNorm(self.expansion * planes//16,self.expansion * planes)
                 )
         else:
             if stride != 1 or in_planes != self.expansion*planes:

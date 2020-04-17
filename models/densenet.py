@@ -29,7 +29,6 @@ class Bottleneck(nn.Module):
         out = torch.cat([out,x], 1)
         return out
 
-
 class Transition(nn.Module):
     def __init__(self, in_planes, out_planes,deconv):
         super(Transition, self).__init__()

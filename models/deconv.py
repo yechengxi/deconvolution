@@ -6,40 +6,6 @@ import torch.nn.functional as F
 from torch.nn.modules import conv
 from torch.nn.modules.utils import _pair
 
-#import cv2
-
-#This is a reference implementation using im2col, and is not used anywhere else
-class Conv2d(conv._ConvNd):
-
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=False):
-
-
-        kernel_size = _pair(kernel_size)
-        stride = _pair(stride)
-        padding = _pair(padding)
-        dilation = _pair(dilation)
-        super(Conv2d, self).__init__(
-            in_channels, out_channels, kernel_size, stride, padding, dilation,
-            False, _pair(0), 1, False)
-
-        self.kernel_size=kernel_size
-        self.dilation=dilation
-        self.padding=padding
-        self.stride=stride
-
-
-    def forward(self, x):
-        N,C,H,W=x.shape
-        out_h=(H+2*self.padding[0]-self.kernel_size[0]+1)//self.stride[0]
-        out_w=(W+2*self.padding[0]-self.kernel_size[0]+1)//self.stride[1]
-        w=self.weight
-        #im2col
-        inp_unf = torch.nn.functional.unfold(x, self.kernel_size,self.dilation,self.padding,self.stride)
-        #matrix multiplication, reshape
-        out_unf = inp_unf.transpose(1, 2).matmul(w.view(w.size(0), -1).t()).transpose(1, 2).view(N,-1,out_h,out_w)
-
-        return out_unf
-
 
 #iteratively solve for inverse sqrt of a matrix
 def isqrt_newton_schulz_autograd(A, numIters):
@@ -57,21 +23,37 @@ def isqrt_newton_schulz_autograd(A, numIters):
     A_isqrt = Z / torch.sqrt(normA)
     return A_isqrt
 
+def isqrt_newton_schulz_autograd_batch(A, numIters):
+    batchSize,dim,_ = A.shape
+    normA=A.view(batchSize, -1).norm(2, 1).view(batchSize, 1, 1)
+    Y = A.div(normA)
+    I = torch.eye(dim,dtype=A.dtype,device=A.device).unsqueeze(0).expand_as(A)
+    Z = torch.eye(dim,dtype=A.dtype,device=A.device).unsqueeze(0).expand_as(A)
+
+    for i in range(numIters):
+        T = 0.5*(3.0*I - Z.bmm(Y))
+        Y = Y.bmm(T)
+        Z = T.bmm(Z)
+    #A_sqrt = Y*torch.sqrt(normA)
+    A_isqrt = Z / torch.sqrt(normA)
+
+    return A_isqrt
+
+
 
 #deconvolve channels
 class ChannelDeconv(nn.Module):
-    def __init__(self,  num_groups, eps=1e-2,n_iter=5,momentum=0.1,sampling_stride=3,debug=False):
+    def __init__(self,  block, eps=1e-2,n_iter=5,momentum=0.1,sampling_stride=3):
         super(ChannelDeconv, self).__init__()
 
         self.eps = eps
         self.n_iter=n_iter
         self.momentum=momentum
-        self.num_groups = num_groups
-        self.debug=debug
+        self.block = block
 
-        self.register_buffer('running_mean1', torch.zeros(num_groups, 1))
-        #self.register_buffer('running_cov', torch.eye(num_groups))
-        self.register_buffer('running_deconv', torch.eye(num_groups))
+        self.register_buffer('running_mean1', torch.zeros(block, 1))
+        #self.register_buffer('running_cov', torch.eye(block))
+        self.register_buffer('running_deconv', torch.eye(block))
         self.register_buffer('running_mean2', torch.zeros(1, 1))
         self.register_buffer('running_var', torch.ones(1, 1))
         self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
@@ -84,18 +66,18 @@ class ChannelDeconv(nn.Module):
             print('Error! Unsupprted tensor shape.')
 
         N, C, H, W = x.size()
-        G = self.num_groups
+        B = self.block
 
         #take the first c channels out for deconv
-        c=int(C/G)*G
+        c=int(C/B)*B
         if c==0:
-            print('Error! num_groups should be set smaller.')
+            print('Error! block should be set smaller.')
 
         #step 1. remove mean
         if c!=C:
-            x1=x[:,:c].permute(1,0,2,3).contiguous().view(G,-1)
+            x1=x[:,:c].permute(1,0,2,3).contiguous().view(B,-1)
         else:
-            x1=x.permute(1,0,2,3).contiguous().view(G,-1)
+            x1=x.permute(1,0,2,3).contiguous().view(B,-1)
 
         if self.sampling_stride > 1 and H >= self.sampling_stride and W >= self.sampling_stride:
             x1_s = x1[:,::self.sampling_stride**2]
@@ -116,7 +98,7 @@ class ChannelDeconv(nn.Module):
 
         #step 2. calculate deconv@x1 = cov^(-0.5)@x1
         if self.training:
-            cov = x1_s @ x1_s.t() / x1_s.shape[1] + self.eps * torch.eye(G, dtype=x.dtype, device=x.device)
+            cov = x1_s @ x1_s.t() / x1_s.shape[1] + self.eps * torch.eye(B, dtype=x.dtype, device=x.device)
             deconv = isqrt_newton_schulz_autograd(cov, self.n_iter)
 
         if self.num_batches_tracked==0:
@@ -172,195 +154,183 @@ class ChannelDeconv(nn.Module):
             x1=x1.view(x_shape)
         return x1
 
+#An alternative implementation
+class Delinear(nn.Module):
+    __constants__ = ['bias', 'in_features', 'out_features']
 
-
-class DeConv2d(conv._ConvNd):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=True, eps=1e-2, n_iter=5, momentum=0.1, mode=4, num_groups=16,debug=False):
-        # mode 1: remove channel correlation then pixel correlation
-        # mode 2: only remove pixel correlation
-        # mode 3: only channel correlation
-        # mode 4: remove channel correlation and pixel correlation together
-        kernel_size = _pair(kernel_size)
-        stride = _pair(stride)
-        padding = _pair(padding)
-        dilation = _pair(dilation)
-        self.kernel_size=kernel_size
-        self.dilation=dilation
-        self.padding=padding
-        self.stride=stride
-        super(DeConv2d, self).__init__(
-            in_channels, out_channels, kernel_size, stride, padding, dilation,
-            False, _pair(0), 1, bias, padding_mode='zeros')
-        #add padding_mode='zeros' for pytorch 1.1
-
-        self.momentum = momentum
-        self.mode=mode
-        self.n_iter = n_iter
-        self.eps = eps
-
-        num_features = self.weight.shape[2] * self.weight.shape[3]#k*k
-        if self.mode!=2:
-            if num_groups>self.weight.shape[1]:
-                num_groups=self.weight.shape[1]
-            self.num_groups=num_groups
-            if self.mode!=4:
-                self.channel_deconv=ChannelDeconv(num_groups,eps=eps,n_iter=n_iter,momentum=momentum,debug=False)
-            else:
-                num_features*=num_groups
-
-        self.num_features = num_features
-
-        if self.mode!=3:
-            self.register_buffer('running_mean', torch.zeros(num_features,1))
-            #self.register_buffer('running_cov', torch.eye(num_features))
-            self.register_buffer('running_deconv', torch.eye(num_features))
-            self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
-
-    def forward(self, x):
-
-        N,C,H,W=x.shape
-        out_h=(H+2*self.padding[0]-self.kernel_size[0]+1)//self.stride[0]
-        out_w=(W+2*self.padding[0]-self.kernel_size[0]+1)//self.stride[1]
-
-
-        if self.mode == 1:
-            x = self.channel_deconv(x)
-
-        if  self.mode==3:
-            x=self.channel_deconv(x)
-            return F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, 1)
-
-
-        if self.mode!=3:
-            #1. im2col, reshape
-
-            # N * cols * pixels
-            inp_unf = torch.nn.functional.unfold(x, self.kernel_size,self.dilation,self.padding,self.stride)
-
-            #(k*k, C*N*H*W) for pixel deconv
-            #(k*k*G, C//G*N*H*W) for grouped pixel deconv
-            X=inp_unf.permute(1,0,2).contiguous().view(self.num_features,-1)
-
-            #2.subtract mean
-            X_mean = X.mean(-1, keepdim=True)
-
-            #track stats for evaluation
-            if self.num_batches_tracked==0:
-                self.running_mean.copy_(X_mean.detach())
-            if self.training:
-                self.running_mean.mul_(1-self.momentum)
-                self.running_mean.add_(X_mean.detach()*self.momentum)
-            else:
-                X_mean = self.running_mean
-
-            X = X - X_mean
-
-            #3. calculate COV, COV^(-0.5), then deconv
-            if self.training:
-                Cov = X / X.shape[1] @ X.t() + self.eps * torch.eye(X.shape[0], dtype=X.dtype, device=X.device)
-                deconv = isqrt_newton_schulz_autograd(Cov, self.n_iter)
-
-            #track stats for evaluation
-            if self.num_batches_tracked==0:
-                #self.running_cov.copy_(Cov.detach())
-                self.running_deconv.copy_(deconv.detach())
-            if self.training:
-                #self.running_cov.mul_(1-self.momentum)
-                #self.running_cov.add_(Cov.detach()*self.momentum)
-                self.running_deconv.mul_(1 - self.momentum)
-                self.running_deconv.add_(deconv.detach() * self.momentum)
-            else:
-                #Cov = self.running_cov
-                deconv = self.running_deconv
-
-            #deconv
-            X_deconv =deconv@X
-
-            #reshape
-            X_deconv=X_deconv.view(-1,N,out_h*out_w).contiguous().permute(1,2,0)
-
-            #4. convolve
-
-            w = self.weight
-            out_unf = X_deconv.matmul(w.view(w.size(0), -1).t()).transpose(1, 2).view(N,-1,out_h,out_w)
-            if self.bias is not None:
-                out_unf=out_unf+self.bias.view(1,-1,1,1)
-
-            if self.training:
-                self.num_batches_tracked.add_(1)
-
-            return out_unf#.contiguous()
-
-
-#this version is faster but slightly weaker. We approximately remove the mean.
-class FastDeconv(conv._ConvNd):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,bias=True, eps=1e-2, n_iter=5, momentum=0.1, num_groups=16,sampling_stride=3):
-
-        kernel_size = _pair(kernel_size)
-        stride = _pair(stride)
-        padding = _pair(padding)
-        dilation = _pair(dilation)
-        self.kernel_size=kernel_size
-        self.dilation=dilation
-        self.padding=padding
-        self.stride=stride
-        self.momentum = momentum
-        self.n_iter = n_iter
-        self.eps = eps
-        super(FastDeconv, self).__init__(
-            in_channels, out_channels, kernel_size, stride, padding, dilation,
-            False, _pair(0), 1, bias, padding_mode='zeros')
-
-        if num_groups>in_channels:
-            num_groups=in_channels
-        self.num_groups=num_groups
-
-        self.num_features = self.kernel_size[0] * self.kernel_size[1]*num_groups
-
-        self.register_buffer('running_mean', torch.zeros(1,self.num_groups, 1, 1))
-        self.register_buffer('running_deconv', torch.eye(self.num_features))
-        self.sampling_stride=[sampling_stride*s for s in stride]
-
-    def forward(self, x):
-
-        N,C,H,W=x.shape
-        N1,C1=N*C//self.num_groups,self.num_groups
-
-        # 1.subtract mean (this is a fast approximation)
-        x=x.view(N1,C1,H,W)
-
-        # track stats for evaluation
-        if self.training:
-            x_mean = x.mean((0,2,3), keepdim=True)
-            self.running_mean.mul_(1 - self.momentum)
-            self.running_mean.add_(x_mean.detach() * self.momentum)
+    def __init__(self, in_features, out_features, bias=True, eps=1e-5, n_iter=5, momentum=0.1, block=512):
+        super(Delinear, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
+        if bias:
+            self.bias = nn.Parameter(torch.Tensor(out_features))
         else:
-            x_mean = self.running_mean
+            self.register_parameter('bias', None)
+        self.reset_parameters()
 
-        x = x - x_mean
 
-        x=x.view(N,C,H,W)
 
-        #2. im2col: N x cols x pixels
-        inp_unf = torch.nn.functional.unfold(x, self.kernel_size,self.dilation,self.padding,self.sampling_stride)
+        if block > in_features:
+            block = in_features
+        else:
+            if in_features%block!=0:
+                block=math.gcd(block,in_features)
+                print('block size set to:', block)
+        self.block = block
+        self.momentum = momentum
+        self.n_iter = n_iter
+        self.eps = eps
+        self.register_buffer('running_mean', torch.zeros(self.block))
+        self.register_buffer('running_deconv', torch.eye(self.block))
 
-        #(k*k*G, C//G*N*H*W) for grouped pixel deconv
-        X = inp_unf.transpose(0,1).contiguous().view(self.num_features, -1)
 
-        #3. calculate COV, COV^(-0.5), then deconv
+    def reset_parameters(self):
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in)
+            nn.init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, input):
+
         if self.training:
-            Cov = X / X.shape[1] @ X.t() + self.eps * torch.eye(X.shape[0], dtype=X.dtype, device=X.device)
+
+            # 1. reshape
+            X=input.view(-1, self.block)
+
+            # 2. subtract mean
+            X_mean = X.mean(0)
+            X = X - X_mean.unsqueeze(0)
+            self.running_mean.mul_(1 - self.momentum)
+            self.running_mean.add_(X_mean.detach() * self.momentum)
+
+            # 3. calculate COV, COV^(-0.5), then deconv
+            # Cov = X.t() @ X / X.shape[0] + self.eps * torch.eye(X.shape[1], dtype=X.dtype, device=X.device)
+            Id = torch.eye(X.shape[1], dtype=X.dtype, device=X.device)
+            Cov = torch.addmm(self.eps, Id, 1. / X.shape[0], X.t(), X)
             deconv = isqrt_newton_schulz_autograd(Cov, self.n_iter)
-
-        #track stats for evaluation
-        if self.training:
+            # track stats for evaluation
             self.running_deconv.mul_(1 - self.momentum)
             self.running_deconv.add_(deconv.detach() * self.momentum)
+
         else:
+            X_mean = self.running_mean
             deconv = self.running_deconv
 
-        #deconv + conv
-        w=self.weight.view(self.weight.shape[0],-1).t().contiguous().view(self.num_features,-1)
-        w=deconv@w
-        w=w.view(-1,self.weight.shape[0]).t().view(self.weight.shape)
-        return F.conv2d(x, w.view(self.weight.shape), self.bias, self.stride, self.padding, self.dilation, 1)
+        w = self.weight.view(-1, self.block) @ deconv
+        b = self.bias
+        if self.bias is not None:
+            b = b - (w @ (X_mean.unsqueeze(1))).view(self.weight.shape[0], -1).sum(1)
+        w = w.view(self.weight.shape)
+        return F.linear(input, w, b)
+
+    def extra_repr(self):
+        return 'in_features={}, out_features={}, bias={}'.format(
+            self.in_features, self.out_features, self.bias is not None
+        )
+
+
+
+class FastDeconv(conv._ConvNd):
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1,groups=1,bias=True, eps=1e-5, n_iter=5, momentum=0.1, block=64, sampling_stride=3,freeze=False,freeze_iter=100):
+        self.momentum = momentum
+        self.n_iter = n_iter
+        self.eps = eps
+        self.counter=0
+        self.track_running_stats=True
+        super(FastDeconv, self).__init__(
+            in_channels, out_channels,  _pair(kernel_size), _pair(stride), _pair(padding), _pair(dilation),
+            False, _pair(0), groups, bias, padding_mode='zeros')
+
+        if block > in_channels:
+            block = in_channels
+        else:
+            if in_channels%block!=0:
+                block=math.gcd(block,in_channels)
+
+        if groups>1:
+            #grouped conv
+            block=in_channels//groups
+
+        self.block=block
+
+        self.num_features = kernel_size**2 *block
+        if groups==1:
+            self.register_buffer('running_mean', torch.zeros(self.num_features))
+            self.register_buffer('running_deconv', torch.eye(self.num_features))
+        else:
+            self.register_buffer('running_mean', torch.zeros(kernel_size ** 2 * in_channels))
+            self.register_buffer('running_deconv', torch.eye(self.num_features).repeat(in_channels // block, 1, 1))
+
+        self.sampling_stride=sampling_stride*stride
+        self.counter=0
+        self.freeze_iter=freeze_iter
+        self.freeze=freeze
+
+    def forward(self, x):
+        N, C, H, W = x.shape
+        B = self.block
+        frozen=self.freeze and (self.counter>self.freeze_iter)
+        if self.training and self.track_running_stats:
+            self.counter+=1
+            self.counter %= (self.freeze_iter * 10)
+
+        if self.training and (not frozen):
+
+            # 1. im2col: N x cols x pixels -> N*pixles x cols
+            if self.kernel_size[0]>1:
+                X = torch.nn.functional.unfold(x, self.kernel_size,self.dilation,self.padding,self.sampling_stride).transpose(1, 2).contiguous()
+            else:
+                #channel wise
+                X = x.permute(0, 2, 3, 1).contiguous().view(-1, C)[::self.sampling_stride**2,:]
+
+            if self.groups==1:
+                # (C//B*N*pixels,k*k*B)
+                X = X.view(-1, self.num_features, C // B).transpose(1, 2).contiguous().view(-1, self.num_features)
+            else:
+                X=X.view(-1,X.shape[-1])
+
+            # 2. subtract mean
+            X_mean = X.mean(0)
+            X = X - X_mean.unsqueeze(0)
+
+            # 3. calculate COV, COV^(-0.5), then deconv
+            if self.groups==1:
+                #Cov = X.t() @ X / X.shape[0] + self.eps * torch.eye(X.shape[1], dtype=X.dtype, device=X.device)
+                Id=torch.eye(X.shape[1], dtype=X.dtype, device=X.device)
+                Cov = torch.addmm(self.eps, Id, 1. / X.shape[0], X.t(), X)
+                deconv = isqrt_newton_schulz_autograd(Cov, self.n_iter)
+            else:
+                X = X.view(-1, self.groups, self.num_features).transpose(0, 1)
+                Id = torch.eye(self.num_features, dtype=X.dtype, device=X.device).expand(self.groups, self.num_features, self.num_features)
+                Cov = torch.baddbmm(self.eps, Id, 1. / X.shape[1], X.transpose(1, 2), X)
+
+                deconv = isqrt_newton_schulz_autograd_batch(Cov, self.n_iter)
+
+            if self.track_running_stats:
+                self.running_mean.mul_(1 - self.momentum)
+                self.running_mean.add_(X_mean.detach() * self.momentum)
+                # track stats for evaluation
+                self.running_deconv.mul_(1 - self.momentum)
+                self.running_deconv.add_(deconv.detach() * self.momentum)
+
+        else:
+            X_mean = self.running_mean
+            deconv = self.running_deconv
+
+        #4. X * deconv * conv = X * (deconv * conv)
+        if self.groups==1:
+            w = self.weight.view(-1, self.num_features, C // B).transpose(1, 2).contiguous().view(-1,self.num_features) @ deconv
+            b = self.bias - (w @ (X_mean.unsqueeze(1))).view(self.weight.shape[0], -1).sum(1)
+            w = w.view(-1, C // B, self.num_features).transpose(1, 2).contiguous()
+        else:
+            w = self.weight.view(C//B, -1,self.num_features)@deconv
+            b = self.bias - (w @ (X_mean.view( -1,self.num_features,1))).view(self.bias.shape)
+
+        w = w.view(self.weight.shape)
+        x= F.conv2d(x, w, b, self.stride, self.padding, self.dilation, self.groups)
+
+        return x
+

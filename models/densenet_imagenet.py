@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 #from .utils import load_state_dict_from_url
 from collections import OrderedDict
-from models.deconv import DeConv2d
 
 __all__ = ['DenseNet', 'densenet121', 'densenet169', 'densenet201', 'densenet161']
 
@@ -103,7 +102,7 @@ class DenseNet(nn.Module):
         else:
             self.features = nn.Sequential(OrderedDict([
                 ('conv0', deconv(3, num_init_features, kernel_size=7, stride=2,
-                                    padding=3)),
+                                    padding=3, freeze=True, n_iter=15)),
                 ('relu0', nn.ReLU(inplace=True)),
                 ('pool0', nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
             ]))
@@ -135,7 +134,7 @@ class DenseNet(nn.Module):
 
         # Official init from torch repo.
         for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m,DeConv2d):
+            if isinstance(m, nn.Conv2d):
                 if hasattr(m,'weight'):
                     nn.init.kaiming_normal_(m.weight)
             elif isinstance(m, nn.BatchNorm2d):
@@ -157,8 +156,7 @@ def _load_state_dict(model, model_url, progress):
     # has keys 'norm.1', 'relu.1', 'conv.1', 'norm.2', 'relu.2', 'conv.2'.
     # They are also in the checkpoints in model_urls. This pattern is used
     # to find such keys.
-    pattern = re.compile(
-        r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')
+    pattern = re.compile(r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$')
     """
     state_dict = load_state_dict_from_url(model_url, progress=progress)
     for key in list(state_dict.keys()):

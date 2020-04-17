@@ -36,12 +36,8 @@ def save_path_formatter(args):
 
     key_map = OrderedDict()
     key_map['arch'] =''
-    #key_map['n_channel'] = 'ch'
-    #key_map['scale_factor'] = 'sc'
-    #key_map['growth_rate'] = 'g'
-    #key_map['block']='b'
+
     key_map['epochs'] = 'ep'
-    key_map['dropout_rate']='do'
     key_map['optimizer']=''
     key_map['lr']=''
     key_map['lr_scheduler']=''
@@ -52,25 +48,25 @@ def save_path_formatter(args):
     key_map['batchnorm'] = 'bn'
 
     key_map['deconv']='deconv'
-    key_map['num_groups']='g'
+    key_map['block']='b'
     key_map['stride']='stride'
     key_map['deconv_iter'] = 'it'
-    key_map['mode'] = 'm'
     key_map['eps'] = 'eps'
     key_map['bias'] = 'bias'
-    key_map['num_groups_final']='fg'
+    key_map['block_fc']='bfc'
+    #key_map['freeze']='freeze'
 
 
     for key, key2 in key_map.items():
         value = args_dict[key]
         if key2 is not '':
-            folder_string.append('{}:{}'.format(key2, value))
+            folder_string.append('{}.{}'.format(key2, value))
         else:
             folder_string.append('{}'.format(value))
 
     save_path = ','.join(folder_string)
-    timestamp = datetime.datetime.now().strftime("%m-%d-%H:%M")
-    return os.path.join('checkpoints',save_path,timestamp)
+    timestamp = datetime.datetime.now().strftime("%m-%d-%H.%M")
+    return os.path.join('checkpoints',save_path,timestamp).replace("\\","/")
 
 
 
