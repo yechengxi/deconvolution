@@ -1,5 +1,7 @@
  # Network Deconvolution
 
+Convolution is a central operation in Convolutional Neural Networks (CNNs), which applies a kernel to overlapping regions shifted across the image. However, because of the strong  correlations in real-world image data, convolutional kernels are in effect re-learning redundant data. In this work, we show that this redundancy has made neural network training challenging, and propose network deconvolution, a procedure which optimally removes pixel-wise and channel-wise correlations before the data is fed into each layer. Network deconvolution can be efficiently calculated at a fraction of the computational cost of a convolution layer. We also show that the deconvolution filters in the first layer of the network resemble the center-surround structure found in biological neurons in the visual regions of the brain. Filtering with such kernels results in a sparse representation, a desired property that has been missing in the training of neural networks. Learning from the sparse representation promotes faster convergence and superior results without the use of batch normalization. We apply our network deconvolution operation to 10 modern neural network models by replacing batch normalization within each. Extensive experiments show that the network deconvolution operation is able to deliver performance improvement in all cases on the CIFAR-10, CIFAR-100, MNIST, Fashion-MNIST, Cityscapes, and ImageNet datasets.  
+
 >@inproceedings{  
 >Ye2020Network,  
 >title={Network Deconvolution},  
@@ -9,12 +11,7 @@
 >url={https://openreview.net/forum?id=rkeu30EtvS}  
 >}  
 
- ## FAQ
- ### Why is it called deconvolution?
 
-Imagine you have a sharp signal I. However, nature is applying a blur to the signal so what you observe is: B=K*I. This blurred signal makes machine learning very hard.
-
-What we want to do is a deconvolution that recovers the clear/white signal I=inv(K)*B. And we use this deconvolved signal for kernel learning in the CNN. The blur calculated from the blurred observation using the square root of the covariance. 
 
  ## Install Dependencies
 
