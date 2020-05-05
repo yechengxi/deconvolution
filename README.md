@@ -8,7 +8,7 @@ Convolution is a central operation in Convolutional Neural Networks (CNNs), whic
 >author={Chengxi Ye and Matthew Evanusa and Hua He and Anton Mitrokhin and Tom Goldstein and James A. Yorke and Cornelia Fermuller and Yiannis Aloimonos},  
 >booktitle={International Conference on Learning Representations},  
 >year={2020},  
->url={https://openreview.net/forum?id=rkeu30EtvS}  
+>url={https://openreview.net/forum?id=rkeu30EtvS }  
 >}  
 
 
