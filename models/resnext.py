@@ -60,7 +60,7 @@ class Block(nn.Module):
 
 
 class ResNeXt(nn.Module):
-    def __init__(self, num_blocks, cardinality, bottleneck_width, num_classes=10, deconv=None,channel_deconv=None):
+    def __init__(self, num_blocks, cardinality, bottleneck_width, num_classes=10, deconv=None,delinear=None,channel_deconv=None):
         super(ResNeXt, self).__init__()
         self.cardinality = cardinality
         self.bottleneck_width = bottleneck_width
@@ -76,7 +76,10 @@ class ResNeXt(nn.Module):
         # self.layer4 = self._make_layer(num_blocks[3], 2)
         if channel_deconv:
             self.deconv1=channel_deconv()
-        self.linear = nn.Linear(cardinality*bottleneck_width*8, num_classes)
+        if delinear:
+            self.linear = delinear(cardinality*bottleneck_width*8, num_classes)
+        else:
+            self.linear = nn.Linear(cardinality*bottleneck_width*8, num_classes)
 
     def _make_layer(self, num_blocks, stride,deconv):
         strides = [stride] + [1]*(num_blocks-1)
@@ -107,17 +110,17 @@ class ResNeXt(nn.Module):
         return out
 
 
-def ResNeXt29_2x64d(num_classes,deconv,channel_deconv):
-    return ResNeXt(num_blocks=[3,3,3], cardinality=2, bottleneck_width=64,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def ResNeXt29_2x64d(num_classes,deconv,delinear,channel_deconv):
+    return ResNeXt(num_blocks=[3,3,3], cardinality=2, bottleneck_width=64,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def ResNeXt29_4x64d(num_classes,deconv,channel_deconv):
-    return ResNeXt(num_blocks=[3,3,3], cardinality=4, bottleneck_width=64,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def ResNeXt29_4x64d(num_classes,deconv,delinear,channel_deconv):
+    return ResNeXt(num_blocks=[3,3,3], cardinality=4, bottleneck_width=64,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def ResNeXt29_8x64d(num_classes,deconv,channel_deconv):
-    return ResNeXt(num_blocks=[3,3,3], cardinality=8, bottleneck_width=64,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def ResNeXt29_8x64d(num_classes,deconv,delinear,channel_deconv):
+    return ResNeXt(num_blocks=[3,3,3], cardinality=8, bottleneck_width=64,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def ResNeXt29_32x4d(num_classes,deconv,channel_deconv):
-    return ResNeXt(num_blocks=[3,3,3], cardinality=32, bottleneck_width=4,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def ResNeXt29_32x4d(num_classes,deconv,delinear,channel_deconv):
+    return ResNeXt(num_blocks=[3,3,3], cardinality=32, bottleneck_width=4,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
 def test_resnext():
     net = ResNeXt29_2x64d()

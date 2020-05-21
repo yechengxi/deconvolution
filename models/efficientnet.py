@@ -72,20 +72,26 @@ class Block(nn.Module):
 
 
 class EfficientNet(nn.Module):
-    def __init__(self, cfg, num_classes=10, deconv=None,channel_deconv=None):
+    def __init__(self, cfg, num_classes=10, deconv=None,delinear=None,channel_deconv=None):
         super(EfficientNet, self).__init__()
         self.cfg = cfg
         if deconv:
             self.deconv=True
             self.conv1 = deconv(3, 32, kernel_size=3, stride=1, padding=1, bias=True,freeze=True,n_iter=10)
-            self.deconv1 = channel_deconv()
+            
         else:
             self.deconv=False
             self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
             self.bn1 = nn.BatchNorm2d(32)
         self.layers = self._make_layers(in_planes=32,deconv=None)
 
-        self.linear = nn.Linear(cfg[-1][1], num_classes)
+        if channel_deconv:
+            self.deconv1 = channel_deconv()
+
+        if delinear:
+            self.linear = delinear(cfg[-1][1], num_classes)
+        else:
+            self.linear = nn.Linear(cfg[-1][1], num_classes)
 
     def _make_layers(self, in_planes,deconv):
         layers = []
@@ -109,7 +115,7 @@ class EfficientNet(nn.Module):
         return out
 
 
-def EfficientNetB0(num_classes,deconv,channel_deconv):
+def EfficientNetB0(num_classes,deconv,delinear,channel_deconv):
     # (expansion, out_planes, num_blocks, stride)
     cfg = [(1,  16, 1, 2),
            (6,  24, 2, 1),
@@ -118,7 +124,7 @@ def EfficientNetB0(num_classes,deconv,channel_deconv):
            (6, 112, 3, 1),
            (6, 192, 4, 2),
            (6, 320, 1, 2)]
-    return EfficientNet(cfg,num_classes,deconv,channel_deconv)
+    return EfficientNet(cfg,num_classes,deconv,delinear,channel_deconv)
 
 
 def test():

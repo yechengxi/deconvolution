@@ -99,6 +99,7 @@ parser.add_argument('--save-plot', default=True, type=distutils.util.strtobool, 
 
 # for deconv
 parser.add_argument('--deconv', default=False, type=distutils.util.strtobool, help='use deconv')
+parser.add_argument('--delinear', default=True, type=distutils.util.strtobool, help='use decorrelated linear functions')
 parser.add_argument('--block', '--num-groups', default=64, type=int, help='block size in deconv')
 parser.add_argument('--deconv-iter', default=5, type=int, help='number of iters in deconv')
 parser.add_argument('--eps', default=1e-5, type=float, help='for regularization')
@@ -120,11 +121,19 @@ def main():
     if args.deconv:
         args.deconv = partial(FastDeconv, bias=args.bias, eps=args.eps, n_iter=args.deconv_iter,block=args.block,sampling_stride=args.stride)
 
-    if args.block_fc > 0:
-        args.channel_deconv = partial(ChannelDeconv, block=args.block_fc, eps=args.eps,
-                                      n_iter=args.deconv_iter,sampling_stride=args.stride)
+    if args.delinear:
+        args.channel_deconv=None
+        if args.block_fc > 0:
+            args.delinear = partial(Delinear, block=args.block_fc, eps=args.eps,n_iter=args.deconv_iter)
+        else:
+            args.delinear = None
     else:
-        args.channel_deconv = None
+        args.delinear = None
+        if args.block_fc > 0:
+            args.channel_deconv = partial(ChannelDeconv, block=args.block_fc, eps=args.eps, n_iter=args.deconv_iter,sampling_stride=args.stride)
+        else:
+            args.channel_deconv = None
+
 
     args.train_losses=[]
     args.train_top1=[]
@@ -196,22 +205,25 @@ def main_worker(gpu, ngpus_per_node, args):
             model = models.__dict__[args.arch]()
         elif args.arch=='resnet18d':
             from models.resnet_imagenet import resnet18d
-            model = resnet18d(deconv=args.deconv,channel_deconv=args.channel_deconv)
+            model = resnet18d(deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
+        elif args.arch == 'resnet34d':
+            from models.resnet_imagenet import resnet34d
+            model = resnet34d(deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
         elif args.arch == 'resnet50d':
             from models.resnet_imagenet import resnet50d
-            model = resnet50d(deconv=args.deconv, channel_deconv=args.channel_deconv)
+            model = resnet50d(deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
         elif args.arch == 'resnet101d':
             from models.resnet_imagenet import resnet101d
-            model = resnet101d(deconv=args.deconv, channel_deconv=args.channel_deconv)
+            model = resnet101d(deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
         elif args.arch=='vgg11d':
             from models.vgg_imagenet import vgg11d
-            model = vgg11d('VGG11d', deconv=args.deconv, channel_deconv=args.channel_deconv)
+            model = vgg11d('VGG11d', deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
         elif args.arch == 'vgg16d':
             from models.vgg_imagenet import vgg16d
-            model = vgg16d('VGG16d', deconv=args.deconv, channel_deconv=args.channel_deconv)
+            model = vgg16d('VGG16d', deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
         elif args.arch == 'densenet121d':
             from models.densenet_imagenet import densenet121d
-            model = densenet121d(deconv=args.deconv, channel_deconv=args.channel_deconv)
+            model = densenet121d(deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -635,6 +647,7 @@ def save_path_formatter(args):
     key_map['batch_size']='bs'
     key_map['seed']='seed'
     key_map['deconv'] = 'deconv'
+    key_map['delinear'] = 'delinear'
     key_map['stride']='stride'
     key_map['block'] = 'b'
     key_map['deconv_iter'] = 'it'

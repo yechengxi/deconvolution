@@ -49,7 +49,7 @@ def parse_args():
     parser.add_argument('--milestone', default=0.4, type=float, help='milestone in multistep scheduler')
     parser.add_argument('--multistep-gamma', default=0.1, type=float, help='the gamma parameter in multistep|plateau scheduler')
 
-    parser.add_argument('-a','--arch', default='vgg', help='architecture')
+    parser.add_argument('-a','--arch', default='vgg11', help='architecture')
     parser.add_argument('--dataset', default='cifar10', help='dataset(cifar10|cifar100|svhn|stl10|mnist)')
 
     parser.add_argument('--init', default='kaiming_1', help='initialization method (casnet|xavier|kaiming_1||kaiming_2)')
@@ -63,7 +63,9 @@ def parse_args():
 
     # for deconv
     parser.add_argument('--deconv', default=False, type=distutils.util.strtobool, help='use deconv')
-    parser.add_argument('--block-fc','--num-groups-final', default=0, type=int, help='block size in the fully connected layers')
+    parser.add_argument('--delinear', default=True, type=distutils.util.strtobool, help='use decorrelated linear')
+
+    parser.add_argument('--block-fc','--num-groups-final', default=0, type=int, help='number of groups in the fully connected layers')
     parser.add_argument('--block', '--num-groups', default=64,type=int, help='block size in deconv')
     parser.add_argument('--deconv-iter', default=5,type=int, help='number of iters in deconv')
     parser.add_argument('--eps', default=1e-5,type=float, help='for regularization')

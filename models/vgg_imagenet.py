@@ -22,35 +22,42 @@ model_urls = {
 
 class VGG(nn.Module):
 
-    def __init__(self, features, num_classes=1000, init_weights=True, deconv=None, channel_deconv=None):
+    def __init__(self, features, num_classes=1000, init_weights=True, deconv=None, delinear=None, channel_deconv=None):
         super(VGG, self).__init__()
         self.deconv = deconv
 
         self.features = features
 
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
-        if not channel_deconv:
+
+        if delinear:
+            Linear=delinear
+        else:
+            Linear=nn.Linear    
+    
+        if channel_deconv:
             self.classifier = nn.Sequential(
+                channel_deconv(),
                 nn.Linear(512 * 7 * 7, 4096),
                 nn.ReLU(True),
                 nn.Dropout(),
+                channel_deconv(),
                 nn.Linear(4096, 4096),
                 nn.ReLU(True),
                 nn.Dropout(),
+                channel_deconv(),
                 nn.Linear(4096, num_classes),
             )
+            
         else:
             self.classifier = nn.Sequential(
-                channel_deconv(),
-                nn.Linear(512 * 7 * 7, 4096),
+                Linear(512 * 7 * 7, 4096),
                 nn.ReLU(True),
                 nn.Dropout(),
-                channel_deconv(),
-                nn.Linear(4096, 4096),
+                Linear(4096, 4096),
                 nn.ReLU(True),
                 nn.Dropout(),
-                channel_deconv(),
-                nn.Linear(4096, num_classes),
+                Linear(4096, num_classes),
             )
 
         if init_weights:
@@ -119,10 +126,10 @@ cfgs = {
 }
 
 
-def _vgg(arch, cfg, batch_norm, pretrained, progress,deconv=None,channel_deconv=None, **kwargs):
+def _vgg(arch, cfg, batch_norm, pretrained, progress,deconv=None,delinear=None,channel_deconv=None, **kwargs):
     if pretrained:
         kwargs['init_weights'] = False
-    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm,deconv=deconv),channel_deconv=channel_deconv, **kwargs)
+    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm,deconv=deconv),delinear=delinear,channel_deconv=channel_deconv, **kwargs)
     """
     if pretrained:
         state_dict = load_state_dict_from_url(model_urls[arch],
@@ -139,7 +146,7 @@ def vgg11(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _vgg('vgg11', 'A', False, pretrained, progress, deconv=False,**kwargs)
+    return _vgg('vgg11', 'A', False, pretrained, progress,**kwargs)
 
 
 def vgg11_bn(pretrained=False, progress=True, **kwargs):
@@ -149,16 +156,16 @@ def vgg11_bn(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _vgg('vgg11_bn', 'A', True, pretrained, progress, deconv=False, **kwargs)
+    return _vgg('vgg11_bn', 'A', True, pretrained, progress, **kwargs)
 
-def vgg11d(pretrained=False, progress=True, deconv=None,channel_deconv=None, **kwargs):
+def vgg11d(pretrained=False, progress=True, deconv=None,delinear=None,channel_deconv=None, **kwargs):
     """VGG 11-layer model (configuration "A") with batch normalization
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _vgg('vgg11_d', 'A', False, pretrained, progress, deconv,channel_deconv, **kwargs)
+    return _vgg('vgg11_d', 'A', False, pretrained, progress, deconv,delinear,channel_deconv, **kwargs)
 
 
 def vgg13(pretrained=False, progress=True, **kwargs):
@@ -200,14 +207,14 @@ def vgg16_bn(pretrained=False, progress=True, **kwargs):
     """
     return _vgg('vgg16_bn', 'D', True, pretrained, progress, **kwargs)
 
-def vgg16d(pretrained=False, progress=True, deconv=None,channel_deconv=None, **kwargs):
+def vgg16d(pretrained=False, progress=True, deconv=None,delinear=None,channel_deconv=None, **kwargs):
     """VGG 16-layer model (configuration "D") with batch normalization
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _vgg('vgg16_bn', 'D', False, pretrained, progress, deconv,channel_deconv,  **kwargs)
+    return _vgg('vgg16_bn', 'D', False, pretrained, progress, deconv,delinear,channel_deconv,  **kwargs)
 
 
 

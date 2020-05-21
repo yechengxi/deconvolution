@@ -67,14 +67,14 @@ class MobileNetV2(nn.Module):
            (6, 160, 3, 2),
            (6, 320, 1, 1)]
 
-    def __init__(self, num_classes=10, deconv=None,channel_deconv=None):
+    def __init__(self, num_classes=10, deconv=None,delinear=None,channel_deconv=None):
         super(MobileNetV2, self).__init__()
         # NOTE: change conv1 stride 2 -> 1 for CIFAR10
         if deconv:
             self.deconv=True
             self.conv1 = deconv(3, 32, kernel_size=3, stride=1, padding=1, bias=True,freeze=True,n_iter=10)
             self.conv2 = deconv(320, 1280, kernel_size=1, stride=1, padding=0, bias=True)
-            self.deconv1=channel_deconv()
+            
         else:
             self.conv1 = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False)
             self.bn1 = nn.BatchNorm2d(32)
@@ -82,9 +82,14 @@ class MobileNetV2(nn.Module):
             self.bn2 = nn.BatchNorm2d(1280)
 
         self.layers = self._make_layers(in_planes=32, deconv=deconv)
-
-        self.linear = nn.Linear(1280, num_classes)
-
+        
+        if delinear:
+            self.linear = delinear(1280, num_classes)
+        else:
+            self.linear = nn.Linear(1280, num_classes)
+        
+        if channel_deconv:
+            self.deconv1=channel_deconv()
     def _make_layers(self, in_planes, deconv=None):
         layers = []
         for expansion, out_planes, num_blocks, stride in self.cfg:

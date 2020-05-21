@@ -13,13 +13,18 @@ cfg = {
 
 
 class VGG(nn.Module):
-    def __init__(self, vgg_name,num_classes=10, deconv=None,channel_deconv=None):
+    def __init__(self, vgg_name,num_classes=10, deconv=None,delinear=None,channel_deconv=None):
         super(VGG, self).__init__()
         self.deconv = deconv
+            
         if channel_deconv:
             self.channel_deconv = channel_deconv()
         self.features = self._make_layers(cfg[vgg_name])
-        self.classifier = nn.Linear(512, num_classes)
+        
+        if delinear:
+            self.classifier = delinear(512, num_classes)
+        else:
+            self.classifier= nn.Linear(512,num_classes)
 
     def forward(self, x):
         out = self.features(x)

@@ -86,7 +86,7 @@ class DenseNet(nn.Module):
     """
 
     def __init__(self, growth_rate=32, block_config=(6, 12, 24, 16),
-                 num_init_features=64, bn_size=4, drop_rate=0, num_classes=1000,deconv=None,channel_deconv=None):
+                 num_init_features=64, bn_size=4, drop_rate=0, num_classes=1000,deconv=None,delinear=None,channel_deconv=None):
 
         super(DenseNet, self).__init__()
 
@@ -130,7 +130,10 @@ class DenseNet(nn.Module):
             self.features.add_module('norm5',channel_deconv())
         # Linear layer
 
-        self.classifier = nn.Linear(num_features, num_classes)
+        if delinear:
+            self.classifier = delinear(num_features, num_classes)
+        else:
+            self.classifier = nn.Linear(num_features, num_classes)
 
         # Official init from torch repo.
         for m in self.modules():
@@ -178,7 +181,7 @@ def _densenet(arch, growth_rate, block_config, num_init_features, pretrained, pr
     return model
 
 
-def densenet121d(deconv, channel_deconv,pretrained=False, progress=True, **kwargs):
+def densenet121d(deconv, delinear,channel_deconv,pretrained=False, progress=True, **kwargs):
     r"""Densenet-121 model from
     `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
 
@@ -186,7 +189,7 @@ def densenet121d(deconv, channel_deconv,pretrained=False, progress=True, **kwarg
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _densenet('densenet121d', 32, (6, 12, 24, 16), 64, pretrained, progress,deconv=deconv,channel_deconv=channel_deconv,
+    return _densenet('densenet121d', 32, (6, 12, 24, 16), 64, pretrained, progress,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv,
                      **kwargs)
 
 

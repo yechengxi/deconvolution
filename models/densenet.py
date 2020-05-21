@@ -47,7 +47,7 @@ class Transition(nn.Module):
 
 
 class DenseNet(nn.Module):
-    def __init__(self, block, nblocks, growth_rate=12, reduction=0.5, num_classes=10,deconv=None,channel_deconv=None):
+    def __init__(self, block, nblocks, growth_rate=12, reduction=0.5, num_classes=10,deconv=None,delinear=None,channel_deconv=None):
         super(DenseNet, self).__init__()
         self.growth_rate = growth_rate
 
@@ -81,7 +81,11 @@ class DenseNet(nn.Module):
             self.bn = nn.BatchNorm2d(num_planes)
         elif channel_deconv:
             self.channel_deconv=channel_deconv()
-        self.linear = nn.Linear(num_planes, num_classes)
+        
+        if delinear:
+            self.linear = delinear(num_planes, num_classes)
+        else:
+            self.linear = nn.Linear(num_planes, num_classes)
 
     def _make_dense_layers(self, block, in_planes, nblock,deconv):
         layers = []
@@ -97,29 +101,32 @@ class DenseNet(nn.Module):
         out = self.trans3(self.dense3(out))
         out = self.dense4(out)
         if hasattr(self,'bn'):
-            out = F.avg_pool2d(F.relu(self.bn(out)), 4)
-        if hasattr(self, 'channel_deconv'):
-            out = self.channel_deconv(F.relu(out))
-            out = F.avg_pool2d(out, 4)
+            out = self.bn(out)
+        
+        out=F.relu(out)
 
+        if hasattr(self, 'channel_deconv'):
+            out = self.channel_deconv(out)
+        
+        out = F.avg_pool2d(out, 4)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
 
-def DenseNet121(num_classes,deconv,channel_deconv):
-    return DenseNet(Bottleneck, [6,12,24,16], growth_rate=32,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def DenseNet121(num_classes,deconv,delinear,channel_deconv):
+    return DenseNet(Bottleneck, [6,12,24,16], growth_rate=32,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def DenseNet169(num_classes,deconv,channel_deconv):
-    return DenseNet(Bottleneck, [6,12,32,32], growth_rate=32,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def DenseNet169(num_classes,deconv,delinear,channel_deconv):
+    return DenseNet(Bottleneck, [6,12,32,32], growth_rate=32,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def DenseNet201(num_classes,deconv,channel_deconv):
-    return DenseNet(Bottleneck, [6,12,48,32], growth_rate=32,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def DenseNet201(num_classes,deconv,delinear,channel_deconv):
+    return DenseNet(Bottleneck, [6,12,48,32], growth_rate=32,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def DenseNet161(num_classes,deconv,channel_deconv):
-    return DenseNet(Bottleneck, [6,12,36,24], growth_rate=48,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def DenseNet161(num_classes,deconv,delinear,channel_deconv):
+    return DenseNet(Bottleneck, [6,12,36,24], growth_rate=48,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def densenet_cifar(num_classes,deconv,channel_deconv):
-    return DenseNet(Bottleneck, [6,12,24,16], growth_rate=12,num_classes=num_classes, deconv=deconv,channel_deconv=channel_deconv)
+def densenet_cifar(num_classes,deconv,delinear,channel_deconv):
+    return DenseNet(Bottleneck, [6,12,24,16], growth_rate=12,num_classes=num_classes, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
 def test_densenet():
     net = densenet_cifar()

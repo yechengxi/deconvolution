@@ -55,7 +55,7 @@ class Bottleneck(nn.Module):
 
 
 class DPN(nn.Module):
-    def __init__(self, cfg, num_classes=10, deconv=None,channel_deconv=None):
+    def __init__(self, cfg, num_classes=10, deconv=None,delinear=None,channel_deconv=None):
         super(DPN, self).__init__()
         in_planes, out_planes = cfg['in_planes'], cfg['out_planes']
         num_blocks, dense_depth = cfg['num_blocks'], cfg['dense_depth']
@@ -74,7 +74,10 @@ class DPN(nn.Module):
         self.layer2 = self._make_layer(in_planes[1], out_planes[1], num_blocks[1], dense_depth[1], stride=2, deconv=deconv)
         self.layer3 = self._make_layer(in_planes[2], out_planes[2], num_blocks[2], dense_depth[2], stride=2, deconv=deconv)
         self.layer4 = self._make_layer(in_planes[3], out_planes[3], num_blocks[3], dense_depth[3], stride=2, deconv=deconv)
-        self.linear = nn.Linear(out_planes[3]+(num_blocks[3]+1)*dense_depth[3], num_classes)
+        if delinear:
+            self.linear = delinear(out_planes[3]+(num_blocks[3]+1)*dense_depth[3], num_classes)
+        else:
+            self.linear = nn.Linear(out_planes[3]+(num_blocks[3]+1)*dense_depth[3], num_classes)
 
     def _make_layer(self, in_planes, out_planes, num_blocks, dense_depth, stride, deconv):
         strides = [stride] + [1]*(num_blocks-1)
@@ -102,7 +105,7 @@ class DPN(nn.Module):
         return out
 
 
-def DPN26(num_classes,deconv,channel_deconv):
+def DPN26(num_classes,deconv,delinear,channel_deconv):
     cfg = {
         'in_planes': (96,192,384,768),
         'out_planes': (256,512,1024,2048),
@@ -111,14 +114,14 @@ def DPN26(num_classes,deconv,channel_deconv):
     }
     return DPN(cfg,num_classes,deconv,channel_deconv)
 
-def DPN92(num_classes,deconv,channel_deconv):
+def DPN92(num_classes,deconv,delinear,channel_deconv):
     cfg = {
         'in_planes': (96,192,384,768),
         'out_planes': (256,512,1024,2048),
         'num_blocks': (3,4,20,3),
         'dense_depth': (16,32,24,128)
     }
-    return DPN(cfg,num_classes,deconv,channel_deconv)
+    return DPN(cfg,num_classes,deconv,delinear,channel_deconv)
 
 
 def test():

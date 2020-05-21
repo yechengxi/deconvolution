@@ -48,6 +48,7 @@ def save_path_formatter(args):
     key_map['batchnorm'] = 'bn'
 
     key_map['deconv']='deconv'
+    key_map['delinear']='delinear'
     key_map['block']='b'
     key_map['stride']='stride'
     key_map['deconv_iter'] = 'it'

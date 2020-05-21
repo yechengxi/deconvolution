@@ -100,7 +100,7 @@ class CellB(nn.Module):
 
 
 class PNASNet(nn.Module):
-    def __init__(self, cell_type, num_cells, num_planes, num_classes=10, deconv=None,channel_deconv=None):
+    def __init__(self, cell_type, num_cells, num_planes, num_classes=10, deconv=None,delinear=None,channel_deconv=None):
         super(PNASNet, self).__init__()
         self.in_planes = num_planes
         self.cell_type = cell_type
@@ -121,7 +121,10 @@ class PNASNet(nn.Module):
         self.layer4 = self._downsample(num_planes*4,deconv=deconv)
         self.layer5 = self._make_layer(num_planes*4, num_cells=6,deconv=deconv)
 
-        self.linear = nn.Linear(num_planes*4, num_classes)
+        if delinear:
+            self.linear = delinear(num_planes*4, num_classes)
+        else:
+            self.linear = nn.Linear(num_planes*4, num_classes)
 
     def _make_layer(self, planes, num_cells,deconv):
         layers = []
@@ -153,11 +156,11 @@ class PNASNet(nn.Module):
         return out
 
 
-def PNASNetA(num_classes,deconv,channel_deconv):
-    return PNASNet(CellA, num_cells=6, num_planes=44,num_classes=num_classes,deconv=deconv,channel_deconv=channel_deconv)
+def PNASNetA(num_classes,deconv,delinear,channel_deconv):
+    return PNASNet(CellA, num_cells=6, num_planes=44,num_classes=num_classes,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
-def PNASNetB(num_classes,deconv,channel_deconv):
-    return PNASNet(CellB, num_cells=6, num_planes=32,num_classes=num_classes,deconv=deconv,channel_deconv=channel_deconv)
+def PNASNetB(num_classes,deconv,delinear,channel_deconv):
+    return PNASNet(CellB, num_cells=6, num_planes=32,num_classes=num_classes,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv)
 
 
 def test():

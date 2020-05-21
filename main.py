@@ -35,10 +35,19 @@ if __name__ == '__main__':
     else:
         args.deconv=None
 
-    if args.block_fc>0:
-        args.channel_deconv=partial(ChannelDeconv, block=args.block_fc,eps=args.eps, n_iter=args.deconv_iter,sampling_stride=args.stride)
-    else:
+    if args.delinear:
         args.channel_deconv=None
+        if args.block_fc > 0:
+            args.delinear = partial(Delinear, block=args.block_fc, eps=args.eps,n_iter=args.deconv_iter)
+        else:
+            args.delinear = None
+    else:
+        args.delinear = None
+        if args.block_fc > 0:
+            args.channel_deconv = partial(ChannelDeconv, block=args.block_fc, eps=args.eps, n_iter=args.deconv_iter,sampling_stride=args.stride)
+        else:
+            args.channel_deconv = None
+
 
     torch.manual_seed(args.seed)
     if args.use_gpu:
@@ -146,9 +155,7 @@ if __name__ == '__main__':
                                                   transforms.ToTensor(),
                                                   transforms.Normalize((0.3782,  0.3839,  0.4100),(0.1873,  0.1905,  0.1880))
                                               ]))
-        #from util import *
-        #mean,std=get_mean_and_std(trainset)
-        #print(mean,std)
+
         testset = torchvision.datasets.SVHN(root='./data',  split='test', download=True, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.3782, 0.3839, 0.4100), (0.1873, 0.1905, 0.1880))
@@ -215,62 +222,62 @@ if __name__ == '__main__':
 
 
     if args.arch == 'vgg19':
-        net = VGG('VGG19',num_classes=args.num_outputs, deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = VGG('VGG19',num_classes=args.num_outputs, deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'vgg16':
-        net = VGG('VGG16',num_classes=args.num_outputs, deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = VGG('VGG16',num_classes=args.num_outputs, deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'vgg13':
-        net = VGG('VGG13',num_classes=args.num_outputs, deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = VGG('VGG13',num_classes=args.num_outputs, deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'vgg11':
-        net = VGG('VGG11',num_classes=args.num_outputs, deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = VGG('VGG11',num_classes=args.num_outputs, deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'vggx':
         from models.simple import VGGX
-        net = VGGX('VGGX',num_classes=args.num_outputs, deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = VGGX('VGGX',num_classes=args.num_outputs, deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'vgg11d':
         from models.vgg_imagenet import vgg11d
-        net = vgg11d('VGG11d',num_classes=args.num_outputs, deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = vgg11d('VGG11d',num_classes=args.num_outputs, deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'vgg16d':
         from models.vgg_imagenet import vgg16d
-        net = vgg16d('VGG16d',num_classes=args.num_outputs, deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = vgg16d('VGG16d',num_classes=args.num_outputs, deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch=='resnet':
-        net = ResNet18(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = ResNet18(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch=='resnet18d':
         from models.resnet_imagenet import resnet18d
-        net = resnet18d(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = resnet18d(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'resnet34d':
         from models.resnet_imagenet import resnet34d
-        model = resnet34d(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        model = resnet34d(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
     if args.arch == 'resnet50d':
         from models.resnet_imagenet import resnet50d
-        model = resnet50d(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        model = resnet50d(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch=='resnet34':
-        net = ResNet34(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = ResNet34(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch=='resnet50':
-        net = ResNet50(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = ResNet50(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch=='preact':
-        net = PreActResNet18(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = PreActResNet18(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     # net = GoogLeNet()
     if args.arch == 'densenet':
         net = densenet_cifar()
 
     if args.arch == 'densenet121':
-        net = DenseNet121(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = DenseNet121(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'densenet121d':
         from models.densenet_imagenet import densenet121d
-        net = densenet121d(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = densenet121d(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'simple_v1':
         from models.simple import *
@@ -286,30 +293,30 @@ if __name__ == '__main__':
 
     if args.arch == 'efficient':
         from models.efficientnet import *
-        net = EfficientNetB0(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = EfficientNetB0(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'resnext':
         from models.resnext import *
-        net = ResNeXt29_32x4d(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = ResNeXt29_32x4d(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'mobilev2':
         from models.mobilenetv2 import *
-        net = MobileNetV2(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = MobileNetV2(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
     # net = MobileNet()
     if args.arch == 'dpn':
-        net = DPN92(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = DPN92(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
     # net = ShuffleNetG2()
 
     if args.arch == 'senet':
-        net = SENet18(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = SENet18(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch == 'pnasnetA':
-        net = PNASNetA(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = PNASNetA(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
     if args.arch == 'pnasnetB':
-        net = PNASNetB(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = PNASNetB(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.arch=='lenet':
-        net = LeNet(num_classes=args.num_outputs,deconv=args.deconv,channel_deconv=args.channel_deconv)
+        net = LeNet(num_classes=args.num_outputs,deconv=args.deconv,delinear=args.delinear,channel_deconv=args.channel_deconv)
 
     if args.loss=='CE':
         args.criterion = nn.CrossEntropyLoss()
@@ -473,18 +480,6 @@ if __name__ == '__main__':
             plt.savefig(os.path.join(args.log_path,'TrainingPlots'))
             plt.clf()
     args.writer.close()
-
-    RESULT_TEST_ACCURACIES = args.test_accuracies
-
-    with open("test_accuracies", "a+") as writeFile:
-        wr = csv.writer(writeFile, delimiter=',')
-        wr.writerow(RESULT_TEST_ACCURACIES)
-
-    RESULT_TRAIN_ACCURACIES = args.train_accuracies
-
-    with open("train_accuracies", "a+") as writeFile:
-        wr = csv.writer(writeFile, delimiter=',')
-        wr.writerow(RESULT_TRAIN_ACCURACIES)
 
 
     print('Training finished successfully. Model size: ', params,)

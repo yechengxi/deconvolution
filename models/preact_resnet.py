@@ -101,7 +101,7 @@ class PreActBottleneck(nn.Module):
 
 
 class PreActResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10, deconv=None,channel_deconv=None):
+    def __init__(self, block, num_blocks, num_classes=10, deconv=None,delinear=None,channel_deconv=None):
         super(PreActResNet, self).__init__()
         self.in_planes = 64
 
@@ -118,7 +118,10 @@ class PreActResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2, deconv=deconv)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2, deconv=deconv)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2, deconv=deconv)
-        self.linear = nn.Linear(512*block.expansion, num_classes)
+        if delinear:
+            self.linear = delinear(512*block.expansion, num_classes)
+        else:
+            self.linear = nn.Linear(512*block.expansion, num_classes)
 
     def _make_layer(self, block, planes, num_blocks, stride, deconv):
         strides = [stride] + [1]*(num_blocks-1)
@@ -142,20 +145,20 @@ class PreActResNet(nn.Module):
         return out
 
 
-def PreActResNet18(num_classes,deconv,channel_deconv):
-    return PreActResNet(PreActBlock, [2,2,2,2],num_classes,deconv,channel_deconv)
+def PreActResNet18(num_classes,deconv,delinear,channel_deconv):
+    return PreActResNet(PreActBlock, [2,2,2,2],num_classes,deconv,delinear,channel_deconv)
 
-def PreActResNet34(num_classes,deconv,channel_deconv):
-    return PreActResNet(PreActBlock, [3,4,6,3],num_classes,deconv,channel_deconv)
+def PreActResNet34(num_classes,deconv,delinear,channel_deconv):
+    return PreActResNet(PreActBlock, [3,4,6,3],num_classes,deconv,delinear,channel_deconv)
 
-def PreActResNet50(num_classes,deconv,channel_deconv):
-    return PreActResNet(PreActBottleneck, [3,4,6,3],num_classes,deconv,channel_deconv)
+def PreActResNet50(num_classes,deconv,delinear,channel_deconv):
+    return PreActResNet(PreActBottleneck, [3,4,6,3],num_classes,deconv,delinear,channel_deconv)
 
-def PreActResNet101(num_classes,deconv,channel_deconv):
-    return PreActResNet(PreActBottleneck, [3,4,23,3],num_classes,deconv,channel_deconv)
+def PreActResNet101(num_classes,deconv,delinear,channel_deconv):
+    return PreActResNet(PreActBottleneck, [3,4,23,3],num_classes,deconv,delinear,channel_deconv)
 
-def PreActResNet152(num_classes,deconv,channel_deconv):
-    return PreActResNet(PreActBottleneck, [3,8,36,3],num_classes,deconv,channel_deconv)
+def PreActResNet152(num_classes,deconv,delinear,channel_deconv):
+    return PreActResNet(PreActBottleneck, [3,8,36,3],num_classes,deconv,delinear,channel_deconv)
 
 
 def test():

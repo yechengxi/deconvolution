@@ -143,7 +143,7 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None,deconv=None,channel_deconv=None):
+                 norm_layer=None,deconv=None,delinear=None,channel_deconv=None):
         super(ResNet, self).__init__()
 
 
@@ -183,7 +183,11 @@ class ResNet(nn.Module):
             self.deconv1 =channel_deconv()
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        
+        if delinear:
+            self.fc = delinear(512 * block.expansion, num_classes)
+        else:
+            self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m,FastDeconv):
@@ -253,8 +257,8 @@ class ResNet(nn.Module):
     def forward(self, x):
         return self._forward_impl(x)
 
-def _resnet(arch, block, planes, pretrained, progress, deconv,channel_deconv, **kwargs):
-    model = ResNet(block, planes,deconv=deconv,channel_deconv=channel_deconv, **kwargs)
+def _resnet(arch, block, planes, pretrained, progress, deconv,delinear,channel_deconv, **kwargs):
+    model = ResNet(block, planes,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv, **kwargs)
     """
     if pretrained:
         state_dict = load_state_dict_from_url(model_urls[arch],
@@ -264,61 +268,61 @@ def _resnet(arch, block, planes, pretrained, progress, deconv,channel_deconv, **
     return model
 
 
-def resnet18d(deconv, channel_deconv, pretrained=False, progress=True, **kwargs):
+def resnet18d(deconv, delinear,channel_deconv, pretrained=False, progress=True, **kwargs):
     """Constructs a ResNet-18 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress, deconv=deconv,channel_deconv=channel_deconv,
+    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], pretrained, progress, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv,
                    **kwargs)
 
 
-def resnet34d(deconv, channel_deconv, pretrained=False, progress=True, **kwargs):
+def resnet34d(deconv, delinear,channel_deconv, pretrained=False, progress=True, **kwargs):
     """Constructs a ResNet-34 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress, deconv=deconv,channel_deconv=channel_deconv,
+    return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], pretrained, progress, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv,
                    **kwargs)
 
 
-def resnet50d(deconv, channel_deconv,pretrained=False, progress=True, **kwargs):
+def resnet50d(deconv, delinear,channel_deconv,pretrained=False, progress=True, **kwargs):
     """Constructs a ResNet-50 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,deconv=deconv,channel_deconv=channel_deconv,
+    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], pretrained, progress,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv,
                    **kwargs)
 
 
-def resnet101d(deconv, channel_deconv,pretrained=False, progress=True, **kwargs):
+def resnet101d(deconv,delinear, channel_deconv,pretrained=False, progress=True, **kwargs):
     """Constructs a ResNet-101 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet101', Bottleneck, [3, 4, 23, 3], pretrained, progress,deconv=deconv,channel_deconv=channel_deconv,
+    return _resnet('resnet101', Bottleneck, [3, 4, 23, 3], pretrained, progress,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv,
                    **kwargs)
 
 
-def resnet152d(deconv, channel_deconv,pretrained=False, progress=True, **kwargs):
+def resnet152d(deconv, delinear,channel_deconv,pretrained=False, progress=True, **kwargs):
     """Constructs a ResNet-152 model.
 
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet152', Bottleneck, [3, 8, 36, 3], pretrained, progress,deconv=deconv,channel_deconv=channel_deconv,
+    return _resnet('resnet152', Bottleneck, [3, 8, 36, 3], pretrained, progress,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv,
                    **kwargs)
 
-def resnext50_32x4d(deconv, channel_deconv,pretrained=False, progress=True, **kwargs):
+def resnext50_32x4d(deconv, delinear,channel_deconv,pretrained=False, progress=True, **kwargs):
     r"""ResNeXt-50 32x4d model from
     `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     Args:
@@ -328,9 +332,9 @@ def resnext50_32x4d(deconv, channel_deconv,pretrained=False, progress=True, **kw
     kwargs['groups'] = 32
     kwargs['width_per_group'] = 4
     return _resnet('resnext50_32x4d', Bottleneck, [3, 4, 6, 3],
-                   pretrained, progress,deconv=deconv,channel_deconv=channel_deconv, **kwargs)
+                   pretrained, progress,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv, **kwargs)
 
-def resnext101_32x8d(deconv, channel_deconv,pretrained=False, progress=True, **kwargs):
+def resnext101_32x8d(deconv, delinear,channel_deconv,pretrained=False, progress=True, **kwargs):
     r"""ResNeXt-101 32x8d model from
     `"Aggregated Residual Transformation for Deep Neural Networks" <https://arxiv.org/pdf/1611.05431.pdf>`_
     Args:
@@ -340,10 +344,10 @@ def resnext101_32x8d(deconv, channel_deconv,pretrained=False, progress=True, **k
     kwargs['groups'] = 32
     kwargs['width_per_group'] = 8
     return _resnet('resnext101_32x8d', Bottleneck, [3, 4, 23, 3],
-                   pretrained, progress,deconv=deconv,channel_deconv=channel_deconv, **kwargs)
+                   pretrained, progress,deconv=deconv,delinear=delinear,channel_deconv=channel_deconv, **kwargs)
 
 
-def wide_resnet50_2d(deconv, channel_deconv,pretrained=False, progress=True, **kwargs):
+def wide_resnet50_2d(deconv,delinear, channel_deconv,pretrained=False, progress=True, **kwargs):
     r"""Wide ResNet-50-2 model from
     `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_
 
@@ -358,10 +362,10 @@ def wide_resnet50_2d(deconv, channel_deconv,pretrained=False, progress=True, **k
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet50_2', Bottleneck, [3, 4, 6, 3],
-                   pretrained, progress, deconv=deconv,channel_deconv=channel_deconv, **kwargs)
+                   pretrained, progress, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv, **kwargs)
 
 
-def wide_resnet101_2d(deconv, channel_deconv, pretrained=False, progress=True, **kwargs):
+def wide_resnet101_2d(deconv, delinear,channel_deconv, pretrained=False, progress=True, **kwargs):
     r"""Wide ResNet-101-2 model from
     `"Wide Residual Networks" <https://arxiv.org/pdf/1605.07146.pdf>`_
 
@@ -376,4 +380,4 @@ def wide_resnet101_2d(deconv, channel_deconv, pretrained=False, progress=True, *
     """
     kwargs['width_per_group'] = 64 * 2
     return _resnet('wide_resnet101_2', Bottleneck, [3, 4, 23, 3],
-                   pretrained, progress, deconv=deconv,channel_deconv=channel_deconv, **kwargs)
+                   pretrained, progress, deconv=deconv,delinear=delinear,channel_deconv=channel_deconv, **kwargs)
