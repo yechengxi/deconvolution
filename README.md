@@ -80,7 +80,7 @@ for deconvolution
 
 
    
- # 2. imagenet dataset:
+ ## 2. ImageNet dataset:
 
 
 1. original resnet18 (90 epochs, use --epochs xx to change)
@@ -93,5 +93,7 @@ python main_imagenet.py -a resnet18d -j 32 imagenet/ILSVRC/Data/CLS-LOC --deconv
 ```
 
  
-
+ ## 3. Semantic segmentation:
+ 
+ Go to the Segmentation folder and follow the instructions in the ReadMe file.  
 
